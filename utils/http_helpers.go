@@ -1,0 +1,24 @@
+package utils
+
+import (
+	"encoding/json"
+	"go.uber.org/zap"
+	"log"
+	"net/http"
+)
+
+type Response struct {
+	Status  bool `json:"status"`
+	Message struct {
+		MetricName  string `json:"name"`
+		MetricValue string `json:"value"`
+	} `json:"message"`
+}
+
+func MakeResponse(w http.ResponseWriter, response Response) {
+	jsonRes, err := json.Marshal(response)
+	if err != nil {
+		log.Fatal("can't decode response", zap.Error(err))
+	}
+	w.Write(jsonRes)
+}
