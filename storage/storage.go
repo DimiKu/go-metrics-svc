@@ -22,7 +22,6 @@ func NewMemStorage(metricsMap map[string]string, log *zap.Logger) *MemStorage {
 func (m *MemStorage) UpdateValue(metricName string, metricValue string) {
 	m.log.Info("Update in storage")
 	m.metricsMap[metricName] = metricValue
-	fmt.Println(m.metricsMap)
 }
 
 func (m *MemStorage) SumValue(metricName string, metricValue string) {
@@ -40,5 +39,4 @@ func (m *MemStorage) SumValue(metricName string, metricValue string) {
 	} else {
 		m.metricsMap[metricName] = metricValue
 	}
-	fmt.Println(m.metricsMap)
 }
