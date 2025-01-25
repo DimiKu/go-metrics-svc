@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
 	"go-metric-svc/entities/server"
 	"go-metric-svc/service"
 	"go-metric-svc/utils"
+	"strconv"
 
 	"go.uber.org/zap"
 	"net/http"
@@ -21,7 +22,7 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 
 		metricType, metricName, metricValue := req[2], req[3], req[4]
 		response := utils.Response{
-			Status: false,
+			Status: true,
 			Message: struct {
 				MetricName  string `json:"name"`
 				MetricValue string `json:"value"`
@@ -30,24 +31,27 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 				MetricValue: metricValue,
 			},
 		}
-
-		jsonRes, err := json.Marshal(response)
-		if err != nil {
-			logger.Error("can't decode response", zap.Error(err))
-		}
-		if utils.Contains(server.SumMetrics, metricType) {
-			service.SumInStorage(metricName, metricValue)
-			utils.MakeResponse(rw, jsonRes)
+		fmt.Println(metricType)
+		if metricType == server.CounterMetrics {
+			num, err := strconv.ParseInt(metricValue, 10, 64)
+			if err != nil {
+				http.Error(rw, err.Error(), http.StatusBadRequest)
+			}
+			service.SumInStorage(metricName, num)
+			response.Status = true
+			utils.MakeResponse(rw, response)
 			return
-
-		} else if utils.Contains(server.UpdateMetrics, metricType) {
-			service.UpdateStorage(metricName, metricValue)
-			utils.MakeResponse(rw, jsonRes)
+		} else if metricType == server.GaugeMetrics {
+			num, err := strconv.ParseFloat(metricValue, 64)
+			if err != nil {
+				http.Error(rw, err.Error(), http.StatusBadRequest)
+			}
+			service.UpdateStorage(metricName, num)
+			response.Status = true
+			utils.MakeResponse(rw, response)
 			return
 		} else {
 			http.Error(rw, "Bad request string", http.StatusBadRequest)
 		}
-
-		utils.MakeResponse(rw, jsonRes)
 	}
 }

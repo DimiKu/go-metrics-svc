@@ -1,6 +1,11 @@
 package utils
 
-import "net/http"
+import (
+	"encoding/json"
+	"go.uber.org/zap"
+	"log"
+	"net/http"
+)
 
 type Response struct {
 	Status  bool `json:"status"`
@@ -10,10 +15,10 @@ type Response struct {
 	} `json:"message"`
 }
 
-func MakeResponse(w http.ResponseWriter, response []byte) error {
-	if _, err := w.Write(response); err != nil {
-		return err
+func MakeResponse(w http.ResponseWriter, response Response) {
+	jsonRes, err := json.Marshal(response)
+	if err != nil {
+		log.Fatal("can't decode response", zap.Error(err))
 	}
-
-	return nil
+	w.Write(jsonRes)
 }

@@ -5,8 +5,8 @@ import (
 )
 
 type Storage interface {
-	UpdateValue(metricName string, metricValue string)
-	SumValue(metricName string, metricValue string)
+	UpdateValue(metricName string, metricValue float64)
+	SumValue(metricName string, metricValue int64)
 }
 
 type MetricCollectorSvc struct {
@@ -25,12 +25,13 @@ func NewMetricCollectorSvc(
 	}
 }
 
-func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue string) {
+func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float64) {
 	s.log.Info("Update in service")
+
 	s.memStorage.UpdateValue(metricName, metricValue)
 }
 
-func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue string) {
+func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64) {
 	s.log.Info("Sum metric in service")
 	s.memStorage.SumValue(metricName, metricValue)
 }

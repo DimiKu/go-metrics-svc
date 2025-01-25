@@ -2,41 +2,42 @@ package storage
 
 import (
 	"fmt"
+	"go-metric-svc/entities/server"
 	"go.uber.org/zap"
-	"strconv"
 )
 
 type MemStorage struct {
-	metricsMap map[string]string
+	metricsMap map[string]server.StorageValue
 
 	log *zap.Logger
 }
 
-func NewMemStorage(metricsMap map[string]string, log *zap.Logger) *MemStorage {
+func NewMemStorage(metricsMap map[string]server.StorageValue, log *zap.Logger) *MemStorage {
 	return &MemStorage{
 		metricsMap: metricsMap,
 		log:        log,
 	}
 }
 
-func (m *MemStorage) UpdateValue(metricName string, metricValue string) {
+func (m *MemStorage) UpdateValue(metricName string, metricValue float64) {
 	m.log.Info("Update in storage")
-	m.metricsMap[metricName] = metricValue
+	m.metricsMap[metricName] = server.StorageValue{Gauge: metricValue}
+	for k, v := range m.metricsMap {
+		fmt.Println(k, v)
+	}
 }
 
-func (m *MemStorage) SumValue(metricName string, metricValue string) {
-	if _, exists := m.metricsMap[metricName]; exists {
-		oldValue, err := strconv.Atoi(m.metricsMap[metricName])
-		if err != nil {
-			m.log.Error("Cant convert m.metricsMap[metricName]")
+func (m *MemStorage) SumValue(metricName string, metricValue int64) {
+	if value, exists := m.metricsMap[metricName]; exists {
+		m.metricsMap[metricName] = server.StorageValue{
+			Counter: value.Counter + metricValue,
 		}
-		newValue, err := strconv.Atoi(metricValue)
-		if err != nil {
-			m.log.Error("Cant convert metricValue")
-		}
-		newMapValue := oldValue + newValue
-		m.metricsMap[metricName] = fmt.Sprintf("%d", newMapValue)
 	} else {
-		m.metricsMap[metricName] = metricValue
+		m.metricsMap[metricName] = server.StorageValue{
+			Counter: metricValue,
+		}
+	}
+	for k, v := range m.metricsMap {
+		fmt.Println(k, v)
 	}
 }
