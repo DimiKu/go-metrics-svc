@@ -7,7 +7,6 @@ import (
 	"go-metric-svc/storage"
 	"go.uber.org/zap"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
@@ -24,8 +23,17 @@ func Test_sendMetrics(t *testing.T) {
 	memStorage := storage.NewMemStorage(initialStorage, logger)
 	collectorService := service.NewMetricCollectorSvc(memStorage, logger)
 	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, logger))
-	srv := httptest.NewServer(handler)
-	defer srv.Close()
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: http.HandlerFunc(handler),
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			t.Fatalf("Error starting server: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name    string
@@ -37,6 +45,16 @@ func Test_sendMetrics(t *testing.T) {
 			args: args{
 				metricsMap: map[string]float32{
 					"Counter": 1.000,
+				},
+				log: log,
+			},
+			wantErr: false,
+		},
+		{
+			name: "positive test2",
+			args: args{
+				metricsMap: map[string]float32{
+					"Gauge": 1.134341,
 				},
 				log: log,
 			},
