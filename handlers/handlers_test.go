@@ -58,6 +58,7 @@ func TestMetricCollectHandler(t *testing.T) {
 			handlerFunc := MetricCollectHandler(collectorService, logger)
 			handlerFunc(w, req)
 			result := w.Result()
+			defer result.Body.Close()
 			assert.Equal(t, tt.args.statusCode, result.StatusCode)
 		})
 	}
