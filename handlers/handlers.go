@@ -31,7 +31,7 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 				MetricValue: metricValue,
 			},
 		}
-		fmt.Println(metricType)
+		// TODO нельзя импортить энтити в хендлер. Сделай дто
 		if metricType == server.CounterMetrics {
 			num, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
@@ -42,6 +42,7 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 			utils.MakeResponse(rw, response)
 			return
 		} else if metricType == server.GaugeMetrics {
+			fmt.Println(metricValue)
 			num, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
 				http.Error(rw, err.Error(), http.StatusBadRequest)
