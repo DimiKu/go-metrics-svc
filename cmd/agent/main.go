@@ -68,10 +68,34 @@ func poolMetricsWorker(ch chan map[string]float32, interval time.Duration, count
 	return nil
 }
 
+func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger) error {
+	var url string
+
+	for k, v := range metricsMap {
+		if k == counterMetricName {
+			url = fmt.Sprintf("%s/update/%s/%s/%d", host, "counter", k, int64(v))
+		} else {
+			url = fmt.Sprintf("%s/update/%s/%s/%f", host, "gauge", k, v)
+		}
+
+		log.Infof("Url is: %s", url)
+
+		log.Info(fmt.Sprintf("Send metric via url %s", url))
+
+		res, err := http.Post(url, "Content-Type: text/plain", nil)
+		defer res.Body.Close()
+		if err != nil {
+			log.Infof("Send metric via url %s", url)
+			return err
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	ch := make(chan map[string]float32, 1)
 	counter := 0
-	var url string
 
 	logger, _ := zap.NewProduction()
 	sugarLog := logger.Sugar()
@@ -82,25 +106,11 @@ func main() {
 	defer sendTicker.Stop()
 
 	go func() {
-
 		<-sendTicker.C
 		metrics := <-ch
 
-		for k, v := range metrics {
-			if k == counterMetricName {
-				url = fmt.Sprintf("%s/update/%s/%s/%d", host, "gauge", k, int64(v))
-			} else {
-				url = fmt.Sprintf("%s/update/%s/%s/%f", host, "gauge", k, v)
-			}
-
-			sugarLog.Infof("Url is: %s", url)
-
-			res, err := http.Post(url, "Content-Type: text/plain", nil)
-			logger.Info(fmt.Sprintf("Send metric via url %s", url))
-			defer res.Body.Close()
-			if err != nil {
-				sugarLog.Infof("Send metric via url %s", url)
-			}
+		if err := sendMetrics(metrics, sugarLog); err != nil {
+			sugarLog.Error(err)
 		}
 	}()
 

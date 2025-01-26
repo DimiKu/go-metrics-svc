@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"go-metric-svc/entities/server"
 	"go-metric-svc/service"
 	"go-metric-svc/utils"
@@ -18,6 +17,7 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 
 		if len(req) < 5 {
 			http.Error(rw, "metric not found", http.StatusNotFound)
+			return
 		}
 
 		metricType, metricName, metricValue := req[2], req[3], req[4]
@@ -42,7 +42,6 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 			utils.MakeResponse(rw, response)
 			return
 		} else if metricType == server.GaugeMetrics {
-			fmt.Println(metricValue)
 			num, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
 				http.Error(rw, err.Error(), http.StatusBadRequest)
