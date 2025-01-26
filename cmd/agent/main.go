@@ -82,11 +82,11 @@ func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger) error {
 
 		log.Info(fmt.Sprintf("Send metric via url %s", url))
 		res, err := http.Post(url, "Content-Type: text/plain", nil)
-		defer res.Body.Close()
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
 			return err
 		}
+		defer res.Body.Close()
 	}
 
 	return nil

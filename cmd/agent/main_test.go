@@ -31,7 +31,7 @@ func Test_sendMetrics(t *testing.T) {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
-			t.Fatalf("Error starting server: %v", err)
+			t.Errorf("Error starting server: %v", err)
 		}
 	}()
 
