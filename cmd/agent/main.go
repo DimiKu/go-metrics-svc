@@ -19,7 +19,8 @@ var (
 func collectMetrics(counter *int) map[string]float32 {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	rand.Seed(time.Now().UnixNano())
+	source := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(source)
 
 	metricsMap := map[string]float32{
 		"Alloc":         float32(memStats.Alloc),
@@ -49,7 +50,7 @@ func collectMetrics(counter *int) map[string]float32 {
 		"StackSys":      float32(memStats.StackSys),
 		"Sys":           float32(memStats.Sys),
 		"TotalAlloc":    float32(memStats.TotalAlloc),
-		"RandomValue":   float32(rand.Float64()),
+		"RandomValue":   float32(r.Float64()),
 		"Counter":       float32(*counter),
 	}
 	return metricsMap
@@ -59,14 +60,13 @@ func poolMetricsWorker(ch chan map[string]float32, interval time.Duration, count
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			*counter += 1
-			metrics := collectMetrics(counter)
-			ch <- metrics
-		}
+	select {
+	case <-ticker.C:
+		*counter += 1
+		metrics := collectMetrics(counter)
+		ch <- metrics
 	}
+	return nil
 }
 
 func main() {
@@ -79,30 +79,27 @@ func main() {
 	defer sendTicker.Stop()
 	var url string
 	go func() {
-		for {
-			select {
-			case <-sendTicker.C:
+		select {
+		case <-sendTicker.C:
 
-				metrics := <-ch
+			metrics := <-ch
 
-				for k, v := range metrics {
-					if k == counterMetricName {
-						url = fmt.Sprintf("%s/update/%s/%s/%d", host, "gauge", k, int64(v))
-					} else {
-						url = fmt.Sprintf("%s/update/%s/%s/%f", host, "gauge", k, v)
-					}
+			for k, v := range metrics {
+				if k == counterMetricName {
+					url = fmt.Sprintf("%s/update/%s/%s/%d", host, "gauge", k, int64(v))
+				} else {
+					url = fmt.Sprintf("%s/update/%s/%s/%f", host, "gauge", k, v)
+				}
 
-					sugarLog.Infof("Url is: %s", url)
+				sugarLog.Infof("Url is: %s", url)
 
-					res, err := http.Post(url, "Content-Type: text/plain", nil)
-					logger.Info(fmt.Sprintf("Send metric via url %s", url))
-					defer res.Body.Close()
-					if err != nil {
-						sugarLog.Infof("Send metric via url %s", url)
-					}
+				res, err := http.Post(url, "Content-Type: text/plain", nil)
+				logger.Info(fmt.Sprintf("Send metric via url %s", url))
+				defer res.Body.Close()
+				if err != nil {
+					sugarLog.Infof("Send metric via url %s", url)
 				}
 			}
-
 		}
 	}()
 
