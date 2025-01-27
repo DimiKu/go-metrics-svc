@@ -1,7 +1,6 @@
 package main
 
 import (
-	"go-metric-svc/entities/server"
 	"go-metric-svc/handlers"
 	"go-metric-svc/service"
 	"go-metric-svc/storage"
@@ -19,7 +18,7 @@ func Test_sendMetrics(t *testing.T) {
 	logger, _ := zap.NewProduction()
 	log := logger.Sugar()
 
-	initialStorage := make(map[string]server.StorageValue)
+	initialStorage := make(map[string]storage.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, logger)
 	collectorService := service.NewMetricCollectorSvc(memStorage, logger)
 	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, logger))

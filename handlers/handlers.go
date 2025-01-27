@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"go-metric-svc/entities/server"
-	"go-metric-svc/service"
+	"go-metric-svc/dto"
 	"go-metric-svc/utils"
 	"strconv"
 
@@ -11,7 +10,12 @@ import (
 	"strings"
 )
 
-func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logger) func(rw http.ResponseWriter, r *http.Request) {
+type Service interface {
+	UpdateStorage(metricName string, num float64)
+	SumInStorage(metricName string, num int64)
+}
+
+func MetricCollectHandler(service Service, logger *zap.Logger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		req := strings.Split(r.URL.String(), "/")
 
@@ -31,8 +35,7 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 				MetricValue: metricValue,
 			},
 		}
-		// TODO нельзя импортить энтити в хендлер. Сделай дто
-		if metricType == server.CounterMetrics {
+		if metricType == dto.MetricTypeServiceCounterTypeDto {
 			num, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
 				http.Error(rw, err.Error(), http.StatusBadRequest)
@@ -41,7 +44,7 @@ func MetricCollectHandler(service *service.MetricCollectorSvc, logger *zap.Logge
 			response.Status = true
 			utils.MakeResponse(rw, response)
 			return
-		} else if metricType == server.GaugeMetrics {
+		} else if metricType == dto.MetricTypeServiceGaugeTypeDto {
 			num, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
 				http.Error(rw, err.Error(), http.StatusBadRequest)

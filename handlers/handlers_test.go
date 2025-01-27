@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"github.com/stretchr/testify/assert"
-	"go-metric-svc/entities/server"
 	"go-metric-svc/service"
 	"go-metric-svc/storage"
 	"go.uber.org/zap"
@@ -13,7 +12,7 @@ import (
 
 func TestMetricCollectHandler(t *testing.T) {
 	logger, _ := zap.NewProduction()
-	initialStorage := make(map[string]server.StorageValue)
+	initialStorage := make(map[string]storage.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, logger)
 	collectorService := service.NewMetricCollectorSvc(memStorage, logger)
 
