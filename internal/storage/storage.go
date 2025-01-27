@@ -61,7 +61,7 @@ func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricSer
 
 func (m *MemStorage) GetAllMetrics() []string {
 	metricSlide := make([]string, len(m.metricsMap))
-	for k, _ := range m.metricsMap {
+	for k := range m.metricsMap {
 		metricSlide = append(metricSlide, k)
 	}
 	return metricSlide
