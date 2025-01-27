@@ -2,8 +2,8 @@ package main
 
 import (
 	"go-metric-svc/handlers"
-	"go-metric-svc/service"
-	"go-metric-svc/storage"
+	"go-metric-svc/internal/service"
+	"go-metric-svc/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
 	"testing"
@@ -19,9 +19,9 @@ func Test_sendMetrics(t *testing.T) {
 	log := logger.Sugar()
 
 	initialStorage := make(map[string]storage.StorageValue)
-	memStorage := storage.NewMemStorage(initialStorage, logger)
-	collectorService := service.NewMetricCollectorSvc(memStorage, logger)
-	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, logger))
+	memStorage := storage.NewMemStorage(initialStorage, log)
+	collectorService := service.NewMetricCollectorSvc(memStorage, log)
+	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, log))
 
 	server := &http.Server{
 		Addr:    ":8080",

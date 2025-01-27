@@ -1,23 +1,26 @@
 package service
 
 import (
+	"go-metric-svc/dto"
+	"go-metric-svc/internal/custom_errors"
 	"go.uber.org/zap"
 )
 
 type Storage interface {
 	UpdateValue(metricName string, metricValue float64)
 	SumValue(metricName string, metricValue int64)
+	GetMetricByName(metricName dto.MetricServiceDto) (dto.MetricServiceDto, error)
 }
 
 type MetricCollectorSvc struct {
 	memStorage Storage
 
-	log *zap.Logger
+	log *zap.SugaredLogger
 }
 
 func NewMetricCollectorSvc(
 	memStorage Storage,
-	log *zap.Logger,
+	log *zap.SugaredLogger,
 ) *MetricCollectorSvc {
 	return &MetricCollectorSvc{
 		memStorage: memStorage,
@@ -34,4 +37,12 @@ func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float6
 func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64) {
 	s.log.Info("Sum metric in service")
 	s.memStorage.SumValue(metricName, metricValue)
+}
+
+func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error) {
+	collectedMetric, err := s.memStorage.GetMetricByName(metric)
+	if err != nil {
+		return dto.MetricServiceDto{}, custom_errors.MetricNotExist
+	}
+	return collectedMetric, nil
 }

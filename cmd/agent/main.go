@@ -56,16 +56,15 @@ func collectMetrics(counter *int) map[string]float32 {
 	return metricsMap
 }
 
-func poolMetricsWorker(ch chan map[string]float32, interval time.Duration, counter *int) error {
+func poolMetricsWorker(ch chan map[string]float32, interval time.Duration, counter *int) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-
-	<-ticker.C
-	*counter += 1
-	metrics := collectMetrics(counter)
-	ch <- metrics
-
-	return nil
+	for {
+		<-ticker.C
+		*counter += 1
+		metrics := collectMetrics(counter)
+		ch <- metrics
+	}
 }
 
 func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger) error {
@@ -105,11 +104,15 @@ func main() {
 	defer sendTicker.Stop()
 
 	go func() {
-		<-sendTicker.C
-		metrics := <-ch
+		for {
+			<-sendTicker.C
+			metrics := <-ch
 
-		if err := sendMetrics(metrics, sugarLog); err != nil {
-			sugarLog.Error(err)
+			if err := sendMetrics(metrics, sugarLog); err != nil {
+				sugarLog.Error(err)
+			}
+			fmt.Println("Im reset ticker")
+			sendTicker.Reset(sendInterval)
 		}
 	}()
 
