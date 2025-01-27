@@ -111,7 +111,6 @@ func main() {
 			if err := sendMetrics(metrics, sugarLog); err != nil {
 				sugarLog.Error(err)
 			}
-			fmt.Println("Im reset ticker")
 			sendTicker.Reset(sendInterval)
 		}
 	}()

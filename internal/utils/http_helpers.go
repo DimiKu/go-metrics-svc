@@ -13,6 +13,7 @@ type Response struct {
 }
 
 func MakeResponse(w http.ResponseWriter, response Response) {
+	// TODO gотом узнаешь нужно раскомментить или удалить
 	//jsonRes, err := json.Marshal(response.Message)
 	//if err != nil {
 	//	log.Fatal("can't decode response", zap.Error(err))

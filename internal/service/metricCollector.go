@@ -10,6 +10,7 @@ type Storage interface {
 	UpdateValue(metricName string, metricValue float64)
 	SumValue(metricName string, metricValue int64)
 	GetMetricByName(metricName dto.MetricServiceDto) (dto.MetricServiceDto, error)
+	GetAllMetrics() []string
 }
 
 type MetricCollectorSvc struct {
@@ -45,4 +46,8 @@ func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto) (dto.M
 		return dto.MetricServiceDto{}, customerrors.ErrMetricNotExist
 	}
 	return collectedMetric, nil
+}
+
+func (s *MetricCollectorSvc) GetAllMetrics() []string {
+	return s.memStorage.GetAllMetrics()
 }

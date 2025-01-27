@@ -19,6 +19,7 @@ func main() {
 	collectorService := service.NewMetricCollectorSvc(memStorage, log)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log))
 	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log))
+	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log))
 	err := http.ListenAndServe(`:8080`, r)
 	if err != nil {
 		panic(err)
