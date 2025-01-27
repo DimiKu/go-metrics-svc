@@ -2,7 +2,7 @@ package storage
 
 import (
 	"go-metric-svc/dto"
-	"go-metric-svc/internal/custom_errors"
+	"go-metric-svc/internal/customErrors"
 	"go.uber.org/zap"
 	"strconv"
 )
@@ -46,7 +46,7 @@ func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricSer
 	storageMetric := dto.MetricStorageDto(metric)
 
 	if _, exists := m.metricsMap[storageMetric.Name]; !exists {
-		return dto.MetricServiceDto{}, custom_errors.ErrMetricNotExist
+		return dto.MetricServiceDto{}, customErrors.ErrMetricNotExist
 	}
 
 	if storageMetric.MetricType == dto.MetricTypeHandlerCounterTypeDto {

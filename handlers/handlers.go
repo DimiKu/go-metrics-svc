@@ -3,7 +3,7 @@ package handlers
 import (
 	"errors"
 	"go-metric-svc/dto"
-	"go-metric-svc/internal/custom_errors"
+	"go-metric-svc/internal/customErrors"
 	"go-metric-svc/internal/utils"
 	"strconv"
 
@@ -95,7 +95,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 		}
 
 		metric, err := service.GetMetricByName(MetricDto)
-		if errors.Is(err, custom_errors.ErrMetricNotExist) {
+		if errors.Is(err, customErrors.ErrMetricNotExist) {
 			log.Warnf("Not found metric by name: %s", metricName)
 			http.Error(rw, "Metric not found", http.StatusNotFound)
 			return
