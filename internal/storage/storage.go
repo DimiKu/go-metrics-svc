@@ -46,7 +46,7 @@ func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricSer
 	storageMetric := dto.MetricStorageDto(metric)
 
 	if _, exists := m.metricsMap[storageMetric.Name]; !exists {
-		return dto.MetricServiceDto{}, customErrors.ErrMetricNotExist
+		return dto.MetricServiceDto{}, customerrors.ErrMetricNotExist
 	}
 
 	if storageMetric.MetricType == dto.MetricTypeHandlerCounterTypeDto {

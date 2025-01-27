@@ -42,7 +42,7 @@ func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64) 
 func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error) {
 	collectedMetric, err := s.memStorage.GetMetricByName(metric)
 	if err != nil {
-		return dto.MetricServiceDto{}, customErrors.ErrMetricNotExist
+		return dto.MetricServiceDto{}, customerrors.ErrMetricNotExist
 	}
 	return collectedMetric, nil
 }

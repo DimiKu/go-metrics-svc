@@ -95,7 +95,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 		}
 
 		metric, err := service.GetMetricByName(MetricDto)
-		if errors.Is(err, customErrors.ErrMetricNotExist) {
+		if errors.Is(err, customerrors.ErrMetricNotExist) {
 			log.Warnf("Not found metric by name: %s", metricName)
 			http.Error(rw, "Metric not found", http.StatusNotFound)
 			return
