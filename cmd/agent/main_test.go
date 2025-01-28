@@ -62,7 +62,7 @@ func Test_sendMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetrics(tt.args.metricsMap, tt.args.log, "http://localhost:8080"); (err != nil) != tt.wantErr {
+			if err := sendMetrics(tt.args.metricsMap, tt.args.log, "localhost:8080"); (err != nil) != tt.wantErr {
 				t.Errorf("sendMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -25,7 +25,7 @@ var (
 func parseFlags() {
 	// регистрируем переменную flagRunAddr
 	// как аргумент -a со значением :8080 по умолчанию
-	flag.StringVar(&flagRunAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&flagRunAddr, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&poolInterval, "p", "2s", "address and port to run server")
 	flag.StringVar(&sendInterval, "s", "10s", "address and port to run server")
 
@@ -87,11 +87,12 @@ func poolMetricsWorker(ch chan map[string]float32, interval time.Duration, count
 func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
 	var url string
 
+	hostWithSchema := "http://" + host
 	for k, v := range metricsMap {
 		if k == counterMetricName {
-			url = fmt.Sprintf("%s/update/%s/%s/%d", host, "counter", k, int64(v))
+			url = fmt.Sprintf("%s/update/%s/%s/%d", hostWithSchema, "counter", k, int64(v))
 		} else {
-			url = fmt.Sprintf("%s/update/%s/%s/%f", host, "gauge", k, v)
+			url = fmt.Sprintf("%s/update/%s/%s/%f", hostWithSchema, "gauge", k, v)
 		}
 
 		log.Infof("Url is: %s", url)
