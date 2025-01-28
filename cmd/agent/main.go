@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -26,8 +27,8 @@ func parseFlags() {
 	// регистрируем переменную flagRunAddr
 	// как аргумент -a со значением :8080 по умолчанию
 	flag.StringVar(&flagRunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&poolInterval, "p", "2s", "address and port to run server")
-	flag.StringVar(&sendInterval, "s", "10s", "address and port to run server")
+	flag.StringVar(&poolInterval, "p", "2", "interval for pool metrics")
+	flag.StringVar(&sendInterval, "r", "10", "interval for send metrics")
 
 	// парсим переданные серверу аргументы в зарегистрированные переменные
 	flag.Parse()
@@ -118,22 +119,22 @@ func main() {
 	sugarLog := logger.Sugar()
 
 	sugarLog.Infof("Pool intervar is %s", poolInterval)
-	poolDurationInterval, err := time.ParseDuration(poolInterval)
+	poolDurationInterval, err := strconv.Atoi(poolInterval)
 	if err != nil {
 		sugarLog.Error(err)
 	}
 
 	sugarLog.Infof("Send intervar is %s", sendInterval)
-	sendDurationInterval, err := time.ParseDuration(poolInterval)
+	sendDurationInterval, err := strconv.Atoi(poolInterval)
 	if err != nil {
 		sugarLog.Error(err)
 	}
 
 	sugarLog.Infof("Start sending messages to %s", flagRunAddr)
 
-	go poolMetricsWorker(ch, poolDurationInterval, &counter)
+	go poolMetricsWorker(ch, time.Duration(poolDurationInterval), &counter)
 
-	sendTicker := time.NewTicker(sendDurationInterval)
+	sendTicker := time.NewTicker(time.Duration(sendDurationInterval))
 	defer sendTicker.Stop()
 
 	go func() {
@@ -144,7 +145,7 @@ func main() {
 			if err := sendMetrics(metrics, sugarLog, flagRunAddr); err != nil {
 				sugarLog.Error(err)
 			}
-			sendTicker.Reset(sendDurationInterval)
+			sendTicker.Reset(time.Duration(sendDurationInterval))
 		}
 	}()
 
