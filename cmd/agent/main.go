@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"go.uber.org/zap"
 	"math/rand"
@@ -10,11 +11,27 @@ import (
 )
 
 var (
-	poolInterval      = 2 * time.Second
-	sendInterval      = 10 * time.Second
-	host              = "http://localhost:8080"
+	//poolInterval      = 2 * time.Second
+	//sendInterval      = 10 * time.Second
+	//host              = "http://localhost:8080"
 	counterMetricName = "Counter"
+	flagRunAddr       string
+	poolInterval      string
+	sendInterval      string
 )
+
+// parseFlags обрабатывает аргументы командной строки
+// и сохраняет их значения в соответствующих переменных
+func parseFlags() {
+	// регистрируем переменную flagRunAddr
+	// как аргумент -a со значением :8080 по умолчанию
+	flag.StringVar(&flagRunAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&poolInterval, "p", "2s", "address and port to run server")
+	flag.StringVar(&sendInterval, "s", "10s", "address and port to run server")
+
+	// парсим переданные серверу аргументы в зарегистрированные переменные
+	flag.Parse()
+}
 
 func collectMetrics(counter *int) map[string]float32 {
 	var memStats runtime.MemStats
@@ -67,7 +84,7 @@ func poolMetricsWorker(ch chan map[string]float32, interval time.Duration, count
 	}
 }
 
-func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger) error {
+func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
 	var url string
 
 	for k, v := range metricsMap {
@@ -95,12 +112,27 @@ func main() {
 	ch := make(chan map[string]float32, 1)
 	counter := 0
 
+	parseFlags()
 	logger, _ := zap.NewProduction()
 	sugarLog := logger.Sugar()
 
-	go poolMetricsWorker(ch, poolInterval, &counter)
+	sugarLog.Infof("Pool intervar is %s", poolInterval)
+	poolDurationInterval, err := time.ParseDuration(poolInterval)
+	if err != nil {
+		sugarLog.Error(err)
+	}
 
-	sendTicker := time.NewTicker(sendInterval)
+	sugarLog.Infof("Send intervar is %s", sendInterval)
+	sendDurationInterval, err := time.ParseDuration(poolInterval)
+	if err != nil {
+		sugarLog.Error(err)
+	}
+
+	sugarLog.Infof("Start sending messages to %s", flagRunAddr)
+
+	go poolMetricsWorker(ch, poolDurationInterval, &counter)
+
+	sendTicker := time.NewTicker(sendDurationInterval)
 	defer sendTicker.Stop()
 
 	go func() {
@@ -108,10 +140,10 @@ func main() {
 			<-sendTicker.C
 			metrics := <-ch
 
-			if err := sendMetrics(metrics, sugarLog); err != nil {
+			if err := sendMetrics(metrics, sugarLog, flagRunAddr); err != nil {
 				sugarLog.Error(err)
 			}
-			sendTicker.Reset(sendInterval)
+			sendTicker.Reset(sendDurationInterval)
 		}
 	}()
 

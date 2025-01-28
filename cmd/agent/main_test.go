@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go-metric-svc/handlers"
+	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/service"
 	"go-metric-svc/internal/storage"
 	"go.uber.org/zap"
@@ -62,7 +62,7 @@ func Test_sendMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetrics(tt.args.metricsMap, tt.args.log); (err != nil) != tt.wantErr {
+			if err := sendMetrics(tt.args.metricsMap, tt.args.log, ":8080"); (err != nil) != tt.wantErr {
 				t.Errorf("sendMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

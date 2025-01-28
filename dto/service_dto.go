@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"go-metric-svc/entities/server"
+	"go-metric-svc/internal/entities/server"
 )
 
 var (
