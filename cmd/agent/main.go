@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"go.uber.org/zap"
 	"math/rand"
@@ -12,27 +11,8 @@ import (
 )
 
 var (
-	//poolInterval      = 2 * time.Second
-	//sendInterval      = 10 * time.Second
-	//host              = "http://localhost:8080"
 	counterMetricName = "Counter"
-	flagRunAddr       string
-	poolInterval      string
-	sendInterval      string
 )
-
-// parseFlags обрабатывает аргументы командной строки
-// и сохраняет их значения в соответствующих переменных
-func parseFlags() {
-	// регистрируем переменную flagRunAddr
-	// как аргумент -a со значением :8080 по умолчанию
-	flag.StringVar(&flagRunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&poolInterval, "p", "2", "interval for pool metrics")
-	flag.StringVar(&sendInterval, "r", "10", "interval for send metrics")
-
-	// парсим переданные серверу аргументы в зарегистрированные переменные
-	flag.Parse()
-}
 
 func collectMetrics(counter *int) map[string]float32 {
 	var memStats runtime.MemStats

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/go-chi/chi/v5"
 	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/service"
@@ -9,16 +8,6 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 )
-
-var flagRunAddr string
-
-func parseFlags() {
-	// регистрируем переменную flagRunAddr
-	// как аргумент -a со значением :8080 по умолчанию
-	flag.StringVar(&flagRunAddr, "a", "localhost:8080", "address and port to run server")
-	// парсим переданные серверу аргументы в зарегистрированные переменные
-	flag.Parse()
-}
 
 func main() {
 
