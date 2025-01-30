@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/caarlos0/env/v11"
 	"go.uber.org/zap"
 	"math/rand"
 	"net/http"
@@ -91,12 +92,32 @@ func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 }
 
 func main() {
+	var (
+		cfg Config
+	)
 	ch := make(chan map[string]float32, 1)
 	counter := 0
 
 	parseFlags()
 	logger, _ := zap.NewProduction()
 	sugarLog := logger.Sugar()
+
+	err := env.Parse(&cfg)
+	if err != nil {
+		sugarLog.Errorf("Error parse env: %s", err)
+	}
+
+	if cfg.Addr != "" {
+		flagRunAddr = cfg.Addr
+	}
+
+	if cfg.PollInterval != "" {
+		poolInterval = cfg.PollInterval
+	}
+
+	if cfg.ReportInterval != "" {
+		sendInterval = cfg.ReportInterval
+	}
 
 	sugarLog.Infof("Pool intervar is %s", poolInterval)
 	poolDurationInterval, err := strconv.Atoi(poolInterval)
@@ -105,7 +126,7 @@ func main() {
 	}
 
 	sugarLog.Infof("Send intervar is %s", sendInterval)
-	sendDurationInterval, err := strconv.Atoi(poolInterval)
+	sendDurationInterval, err := strconv.Atoi(sendInterval)
 	if err != nil {
 		sugarLog.Error(err)
 	}
