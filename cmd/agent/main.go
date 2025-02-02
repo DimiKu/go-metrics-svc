@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/caarlos0/env/v11"
+	"go-metric-svc/internal/config"
 	"go.uber.org/zap"
 	"math/rand"
 	"net/http"
@@ -93,7 +94,7 @@ func sendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 
 func main() {
 	var (
-		cfg Config
+		cfg config.AgentConfig
 	)
 	ch := make(chan map[string]float32, 1)
 	counter := 0
