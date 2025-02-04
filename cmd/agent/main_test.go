@@ -2,7 +2,9 @@ package main
 
 import (
 	"go-metric-svc/internal/handlers"
-	"go-metric-svc/internal/service"
+	"go-metric-svc/internal/models"
+	"go-metric-svc/internal/service/agent"
+	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
@@ -18,9 +20,9 @@ func Test_sendMetrics(t *testing.T) {
 	logger, _ := zap.NewProduction()
 	log := logger.Sugar()
 
-	initialStorage := make(map[string]storage.StorageValue)
+	initialStorage := make(map[string]models.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, log)
-	collectorService := service.NewMetricCollectorSvc(memStorage, log)
+	collectorService := server.NewMetricCollectorSvc(memStorage, log)
 	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, log))
 
 	server := &http.Server{
@@ -62,7 +64,7 @@ func Test_sendMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetrics(tt.args.metricsMap, tt.args.log, "localhost:8080"); (err != nil) != tt.wantErr {
+			if err := agent.SendMetrics(tt.args.metricsMap, tt.args.log, "localhost:8080"); (err != nil) != tt.wantErr {
 				t.Errorf("sendMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

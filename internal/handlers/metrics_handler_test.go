@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"github.com/stretchr/testify/assert"
-	"go-metric-svc/internal/service"
+	"go-metric-svc/internal/models"
+	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
@@ -13,9 +14,9 @@ import (
 func TestMetricCollectHandler(t *testing.T) {
 	log, _ := zap.NewProduction()
 	logger := log.Sugar()
-	initialStorage := make(map[string]storage.StorageValue)
+	initialStorage := make(map[string]models.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, logger)
-	collectorService := service.NewMetricCollectorSvc(memStorage, logger)
+	collectorService := server.NewMetricCollectorSvc(memStorage, logger)
 
 	type args struct {
 		statusCode int
@@ -68,12 +69,12 @@ func TestMetricReceiveHandler(t *testing.T) {
 	log, _ := zap.NewProduction()
 	logger := log.Sugar()
 
-	initialStorage := make(map[string]storage.StorageValue)
-	initialStorage["gccpufraction"] = storage.StorageValue{
+	initialStorage := make(map[string]models.StorageValue)
+	initialStorage["gccpufraction"] = models.StorageValue{
 		Gauge: 0.000000,
 	}
 	memStorage := storage.NewMemStorage(initialStorage, logger)
-	collectorService := service.NewMetricCollectorSvc(memStorage, logger)
+	collectorService := server.NewMetricCollectorSvc(memStorage, logger)
 
 	type args struct {
 		statusCode int

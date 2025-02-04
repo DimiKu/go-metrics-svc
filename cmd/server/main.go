@@ -5,7 +5,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"
-	"go-metric-svc/internal/service"
+	"go-metric-svc/internal/models"
+	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
@@ -31,9 +32,9 @@ func main() {
 		addr = flagRunAddr
 	}
 
-	initialStorage := make(map[string]storage.StorageValue)
+	initialStorage := make(map[string]models.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, log)
-	collectorService := service.NewMetricCollectorSvc(memStorage, log)
+	collectorService := server.NewMetricCollectorSvc(memStorage, log)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log))
 	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log))
 	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log))
