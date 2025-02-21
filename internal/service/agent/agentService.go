@@ -106,7 +106,7 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 		log.Infof("Url is: %s", url)
 
 		log.Info(fmt.Sprintf("Send metric via url %s", url))
-		res, err := http.Post(url, "Content-Type: text/plain", nil)
+		res, err := http.Post(url, "Content-Type: application/json", nil)
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
 			return err

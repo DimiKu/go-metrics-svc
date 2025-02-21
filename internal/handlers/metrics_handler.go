@@ -125,9 +125,15 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 			return
 		}
 
+		rw.Header().Set("Content-Type", "application/json")
+
 		dtoMetric.Name = metric.ID
 		dtoMetric.MetricType = strings.ToLower(metric.MType)
 		resMetric, err := service.GetMetricByName(dtoMetric)
+		if errors.Is(err, customerrors.ErrMetricNotExist) {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
 		if err != nil {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
@@ -166,7 +172,7 @@ func MetricJSONReceiveHandler(service Service, log *zap.SugaredLogger) func(rw h
 		}
 
 		lowerCaseMetricName := strings.ToLower(metric.ID)
-
+		rw.Header().Set("Content-Type", "application/json")
 		switch metric.MType {
 		case dto.MetricTypeHandlerCounterTypeDto:
 			if metric.Delta == nil {
