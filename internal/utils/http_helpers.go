@@ -1,6 +1,10 @@
 package utils
 
 import (
+	"encoding/json"
+	"go-metric-svc/dto"
+	"go.uber.org/zap"
+	"log"
 	"net/http"
 )
 
@@ -19,4 +23,12 @@ func MakeResponse(w http.ResponseWriter, response Response) {
 	//	log.Fatal("can't decode response", zap.Error(err))
 	//}
 	w.Write([]byte(response.Message.MetricValue))
+}
+
+func MakeMetricResponse(w http.ResponseWriter, metric dto.MetricServiceDto) {
+	jsonRes, err := json.Marshal(metric)
+	if err != nil {
+		log.Fatal("can't decode response", zap.Error(err))
+	}
+	w.Write(jsonRes)
 }

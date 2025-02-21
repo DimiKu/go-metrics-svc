@@ -107,6 +107,36 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 	}
 }
 
+func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		var metric models.Metrics
+		var buf bytes.Buffer
+		var dtoMetric dto.MetricServiceDto
+
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = json.Unmarshal(buf.Bytes(), &metric)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		dtoMetric.Name = metric.ID
+		dtoMetric.MetricType = strings.ToLower(metric.MType)
+		resMetric, err := service.GetMetricByName(dtoMetric)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		utils.MakeMetricResponse(rw, resMetric)
+	}
+}
+
 func MetricJSONReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
