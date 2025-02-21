@@ -61,7 +61,7 @@ func main() {
 			<-sendTicker.C
 			metrics := <-ch
 
-			if err := agentService.SendMetrics(metrics, sugarLog, flagRunAddr); err != nil {
+			if err := agentService.SendJsonMetrics(metrics, sugarLog, flagRunAddr); err != nil {
 				sugarLog.Error(err)
 			}
 			sendTicker.Reset(time.Duration(sendDurationInterval))

@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"go-metric-svc/dto"
 	customerrors "go-metric-svc/internal/customErrors"
+	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"net/http"
@@ -101,5 +104,57 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 
 		response.Message.MetricValue = metric.Value
 		utils.MakeResponse(rw, response)
+	}
+}
+
+func MetricJsonReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		var metric models.Metrics
+		var buf bytes.Buffer
+
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = json.Unmarshal(buf.Bytes(), &metric)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		response := utils.Response{
+			Status: true,
+			Message: struct {
+				MetricName  string `json:"name"`
+				MetricValue string `json:"value"`
+			}{
+				MetricName:  metric.ID,
+				MetricValue: "",
+			},
+		}
+
+		lowerCaseMetricName := strings.ToLower(metric.ID)
+
+		switch metric.MType {
+		case dto.MetricTypeHandlerCounterTypeDto:
+			if metric.Delta == nil {
+				return
+			}
+			service.SumInStorage(lowerCaseMetricName, *metric.Delta)
+			response.Status = true
+			utils.MakeResponse(rw, response)
+			return
+		case dto.MetricTypeHandlerGaugeTypeDto:
+			if metric.Delta == nil {
+				return
+			}
+			service.UpdateStorage(lowerCaseMetricName, *metric.Value)
+			response.Status = true
+			utils.MakeResponse(rw, response)
+			return
+		}
+
 	}
 }

@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"go-metric-svc/internal/entities/agent"
+	"go-metric-svc/internal/models"
 	"go.uber.org/zap"
 	"math/rand"
 	"net/http"
@@ -70,6 +71,36 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 			url = fmt.Sprintf("%s/update/%s/%s/%d", hostWithSchema, "counter", k, int64(v))
 		} else {
 			url = fmt.Sprintf("%s/update/%s/%s/%f", hostWithSchema, "gauge", k, v)
+		}
+
+		log.Infof("Url is: %s", url)
+
+		log.Info(fmt.Sprintf("Send metric via url %s", url))
+		res, err := http.Post(url, "Content-Type: text/plain", nil)
+		if err != nil {
+			log.Infof("Send metric via url %s", url)
+			return err
+		}
+		defer res.Body.Close()
+	}
+
+	return nil
+}
+
+func SendJsonMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
+	url := "http://" + host + "/update"
+	for k, v := range metricsMap {
+		var metric models.Metrics
+		if k == agent.CounterMetricName {
+			metric.ID = k
+			metric.MType = agent.CounterMetricName
+			value := int64(v)
+			metric.Delta = &value
+		} else {
+			metric.ID = k
+			metric.MType = agent.GaugeMetricName
+			value := int64(v)
+			metric.Delta = &value
 		}
 
 		log.Infof("Url is: %s", url)
