@@ -87,7 +87,7 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 	return nil
 }
 
-func SendJsonMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
+func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
 	url := "http://" + host + "/update"
 	for k, v := range metricsMap {
 		var metric models.Metrics
