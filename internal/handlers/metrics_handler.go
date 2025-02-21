@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"go-metric-svc/dto"
 	customerrors "go-metric-svc/internal/customErrors"
 	"go-metric-svc/internal/models"
@@ -112,6 +113,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 		var metric models.Metrics
 		var buf bytes.Buffer
 		var dtoMetric dto.MetricServiceDto
+		var resMetric models.Metrics
 
 		_, err := buf.ReadFrom(r.Body)
 		if err != nil {
@@ -129,7 +131,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 
 		dtoMetric.Name = strings.ToLower(metric.ID)
 		dtoMetric.MetricType = strings.ToLower(metric.MType)
-		resMetric, err := service.GetMetricByName(dtoMetric)
+		m, err := service.GetMetricByName(dtoMetric)
 		if errors.Is(err, customerrors.ErrMetricNotExist) {
 			http.Error(rw, err.Error(), http.StatusNotFound)
 			return
@@ -139,6 +141,24 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 			return
 		}
 
+		resMetric.ID = m.Name
+		switch m.MetricType {
+		case dto.MetricTypeHandlerCounterTypeDto:
+			intValue, err := strconv.ParseInt(m.Value, 10, 64)
+			if err != nil {
+				fmt.Println("Ошибка:", err)
+				return
+			}
+			resMetric.Delta = &intValue
+		case dto.MetricTypeHandlerGaugeTypeDto:
+			float64Number, err := strconv.ParseFloat(m.Value, 64)
+			if err != nil {
+				fmt.Println("Ошибка:", err)
+				return
+			}
+			resMetric.Value = &float64Number
+		}
+		resMetric.MType = m.MetricType
 		utils.MakeMetricResponse(rw, resMetric)
 	}
 }
