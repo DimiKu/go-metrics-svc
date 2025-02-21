@@ -107,7 +107,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 	}
 }
 
-func MetricJsonReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricJSONReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
 		var buf bytes.Buffer
