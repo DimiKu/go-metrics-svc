@@ -25,8 +25,6 @@ type Service interface {
 func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		req := strings.Split(r.URL.String(), "/")
-		var metric dto.MetricServiceDto
-
 		if len(req) < 5 {
 			http.Error(rw, "metric not found", http.StatusNotFound)
 			return
@@ -53,8 +51,6 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 			log.Infof("Collect counter mertic with name: %s", metricName)
 			netValue := service.SumInStorage(lowerCaseMetricName, num)
 			response.Status = true
-			metric.Name = lowerCaseMetricName
-			metric.MetricType = dto.MetricTypeHandlerCounterTypeDto
 
 			response.Message.MetricValue = strconv.FormatInt(netValue, 10)
 
