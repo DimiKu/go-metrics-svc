@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"go-metric-svc/internal/entities/agent"
 	"go-metric-svc/internal/models"
@@ -51,15 +53,9 @@ func collectMetrics(counter *int) map[string]float32 {
 	return metricsMap
 }
 
-func PoolMetricsWorker(ch chan map[string]float32, interval time.Duration, counter *int) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		<-ticker.C
-		*counter += 1
-		metrics := collectMetrics(counter)
-		ch <- metrics
-	}
+func PoolMetricsWorker(ch chan map[string]float32, counter *int) {
+	metrics := collectMetrics(counter)
+	ch <- metrics
 }
 
 func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
@@ -72,10 +68,7 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 		} else {
 			url = fmt.Sprintf("%s/update/%s/%s/%f", hostWithSchema, "gauge", k, v)
 		}
-
-		log.Infof("Url is: %s", url)
-
-		log.Info(fmt.Sprintf("Send metric via url %s", url))
+		fmt.Print("send")
 		res, err := http.Post(url, "Content-Type: text/plain", nil)
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
@@ -88,7 +81,7 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 }
 
 func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
-	url := "http://" + host + "/update"
+	url := "http://" + host + "/update/"
 	for k, v := range metricsMap {
 		var metric models.Metrics
 		if k == agent.CounterMetricName {
@@ -99,18 +92,22 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 		} else {
 			metric.ID = k
 			metric.MType = agent.GaugeMetricName
-			value := int64(v)
-			metric.Delta = &value
+			value := float64(v)
+			metric.Value = &value
 		}
 
-		log.Infof("Url is: %s", url)
+		resMetrics, err := json.Marshal(metric)
+		if err != nil {
+			log.Infof("Failed to marshal body %s", url)
+			return err
+		}
 
-		log.Info(fmt.Sprintf("Send metric via url %s", url))
-		res, err := http.Post(url, "Content-Type: application/json", nil)
+		res, err := http.Post(url, "Content-Type: application/json", bytes.NewBuffer(resMetrics))
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
 			return err
 		}
+		time.Sleep(100 * time.Millisecond)
 		defer res.Body.Close()
 	}
 

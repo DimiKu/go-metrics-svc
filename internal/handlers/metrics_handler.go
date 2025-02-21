@@ -176,6 +176,7 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 
 		err = json.Unmarshal(buf.Bytes(), &metric)
 		if err != nil {
+			log.Infof("error with body %s", buf.Bytes())
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -192,8 +193,9 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 		}
 
 		lowerCaseMetricName := strings.ToLower(metric.ID)
+		lowerCaseType := strings.ToLower(metric.MType)
 		rw.Header().Set("Content-Type", "application/json")
-		switch metric.MType {
+		switch lowerCaseType {
 		case dto.MetricTypeHandlerCounterTypeDto:
 			if metric.Delta == nil {
 				return

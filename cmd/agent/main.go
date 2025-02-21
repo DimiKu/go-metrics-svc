@@ -1,11 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"github.com/caarlos0/env/v11"
 	"go-metric-svc/internal/config"
 	agentService "go-metric-svc/internal/service/agent"
 	"go.uber.org/zap"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -49,11 +53,21 @@ func main() {
 		sugarLog.Error(err)
 	}
 
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	sugarLog.Infof("Start sending messages to %s", flagRunAddr)
 
-	go agentService.PoolMetricsWorker(ch, time.Duration(poolDurationInterval), &counter)
+	poolTicker := time.NewTicker(time.Duration(poolDurationInterval) * time.Second)
 
-	sendTicker := time.NewTicker(time.Duration(sendDurationInterval))
+	go func() {
+		for {
+			<-poolTicker.C
+			agentService.PoolMetricsWorker(ch, &counter)
+		}
+	}()
+
+	sendTicker := time.NewTicker(time.Duration(sendDurationInterval) * time.Second)
 	defer sendTicker.Stop()
 
 	go func() {
@@ -64,12 +78,12 @@ func main() {
 			if err := agentService.SendJSONMetrics(metrics, sugarLog, flagRunAddr); err != nil {
 				sugarLog.Error(err)
 			}
-			sendTicker.Reset(time.Duration(sendDurationInterval))
 		}
 	}()
 
-	for {
-		sugarLog.Info("Agent tick")
-		time.Sleep(1 * time.Second)
+	select {
+	case sig := <-sigChan:
+		fmt.Println("Получен сигнал:", sig)
+		os.Exit(0)
 	}
 }
