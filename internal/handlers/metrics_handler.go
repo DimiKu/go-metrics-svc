@@ -143,7 +143,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 	}
 }
 
-func MetricJSONReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
 		var buf bytes.Buffer
@@ -183,7 +183,7 @@ func MetricJSONReceiveHandler(service Service, log *zap.SugaredLogger) func(rw h
 			utils.MakeResponse(rw, response)
 			return
 		case dto.MetricTypeHandlerGaugeTypeDto:
-			if metric.Delta == nil {
+			if metric.Value == nil {
 				return
 			}
 			service.UpdateStorage(lowerCaseMetricName, *metric.Value)

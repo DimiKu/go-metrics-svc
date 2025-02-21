@@ -39,8 +39,8 @@ func main() {
 
 	r.Use(customLog.LogMiddleware(log))
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log))
-	r.Post("/update", handlers.MetricJSONReceiveHandler(collectorService, log))
-	r.Post("/value", handlers.MetricReceiveJSONHandler(collectorService, log))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log))
+	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log))
 	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log))
 
 	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log))

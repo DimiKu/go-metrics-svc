@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"go-metric-svc/dto"
 	"go-metric-svc/internal/customErrors"
 	"go-metric-svc/internal/models"
@@ -39,6 +40,7 @@ func (m *MemStorage) SumValue(metricName string, metricValue int64) {
 }
 
 func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error) {
+	fmt.Print(m.metricsMap)
 	storageMetric := dto.MetricStorageDto(metric)
 
 	if _, exists := m.metricsMap[storageMetric.Name]; !exists {
