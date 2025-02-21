@@ -18,6 +18,7 @@ import (
 func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		req := strings.Split(r.URL.String(), "/")
+		var metric dto.MetricServiceDto
 
 		if len(req) < 5 {
 			http.Error(rw, "metric not found", http.StatusNotFound)
@@ -45,6 +46,25 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 			log.Infof("Collect counter mertic with name: %s", metricName)
 			service.SumInStorage(lowerCaseMetricName, num)
 			response.Status = true
+			metric.Name = lowerCaseMetricName
+			metric.MetricType = dto.MetricTypeHandlerCounterTypeDto
+			val, err := service.GetMetricByName(metric)
+			if err != nil {
+				return
+			}
+			intVal, err := strconv.Atoi(val.Value)
+			if err != nil {
+				fmt.Println("Ошибка:", err)
+				return
+			}
+			intMetricValue, err := strconv.Atoi(response.Message.MetricValue)
+			if err != nil {
+				fmt.Println("Ошибка:", err)
+				return
+			}
+
+			response.Message.MetricValue = strconv.Itoa(intMetricValue + intVal)
+
 			utils.MakeResponse(rw, response)
 			return
 		} else if metricType == dto.MetricTypeHandlerGaugeTypeDto {

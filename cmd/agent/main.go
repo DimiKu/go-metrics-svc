@@ -9,13 +9,16 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 )
 
 func main() {
 	var (
-		cfg config.AgentConfig
+		cfg            config.AgentConfig
+		metricsMapLock sync.Mutex
+		metricsMap     map[string]float32
 	)
 	ch := make(chan map[string]float32, 1)
 	counter := 0
@@ -63,7 +66,10 @@ func main() {
 	go func() {
 		for {
 			<-poolTicker.C
-			agentService.PoolMetricsWorker(ch, &counter)
+			metricsMapLock.Lock()
+			counter += 1
+			metricsMap = agentService.PoolMetricsWorker(ch, &counter)
+			metricsMapLock.Unlock()
 		}
 	}()
 
@@ -73,7 +79,10 @@ func main() {
 	go func() {
 		for {
 			<-sendTicker.C
-			metrics := <-ch
+
+			metricsMapLock.Lock()
+			metrics := metricsMap
+			metricsMapLock.Unlock()
 
 			if err := agentService.SendJSONMetrics(metrics, sugarLog, flagRunAddr); err != nil {
 				sugarLog.Error(err)

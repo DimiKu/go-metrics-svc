@@ -1,6 +1,7 @@
 package agent
 
 const (
-	CounterMetricName = "Counter"
+	CounterMetricName = "PollCount"
 	GaugeMetricName   = "Gauge"
+	CounterMetricType = "Counter"
 )

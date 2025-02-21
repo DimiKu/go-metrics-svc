@@ -18,6 +18,7 @@ func collectMetrics(counter *int) map[string]float32 {
 	runtime.ReadMemStats(&memStats)
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
+	pollCount := *counter
 
 	metricsMap := map[string]float32{
 		"Alloc":         float32(memStats.Alloc),
@@ -48,19 +49,20 @@ func collectMetrics(counter *int) map[string]float32 {
 		"Sys":           float32(memStats.Sys),
 		"TotalAlloc":    float32(memStats.TotalAlloc),
 		"RandomValue":   float32(r.Float64()),
-		"Counter":       float32(*counter),
+		"PollCount":     float32(pollCount),
 	}
 	return metricsMap
 }
 
-func PoolMetricsWorker(ch chan map[string]float32, counter *int) {
+func PoolMetricsWorker(ch chan map[string]float32, counter *int) map[string]float32 {
 	metrics := collectMetrics(counter)
-	ch <- metrics
+	return metrics
+	//ch <- metrics
 }
 
 func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
 	var url string
-
+	log.Info("start send metrics")
 	hostWithSchema := "http://" + host
 	for k, v := range metricsMap {
 		if k == agent.CounterMetricName {
@@ -68,7 +70,6 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 		} else {
 			url = fmt.Sprintf("%s/update/%s/%s/%f", hostWithSchema, "gauge", k, v)
 		}
-		fmt.Print("send")
 		res, err := http.Post(url, "Content-Type: text/plain", nil)
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
@@ -86,7 +87,7 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 		var metric models.Metrics
 		if k == agent.CounterMetricName {
 			metric.ID = k
-			metric.MType = agent.CounterMetricName
+			metric.MType = agent.CounterMetricType
 			value := int64(v)
 			metric.Delta = &value
 		} else {
@@ -107,7 +108,6 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 			log.Infof("Send metric via url %s", url)
 			return err
 		}
-		time.Sleep(100 * time.Millisecond)
 		defer res.Body.Close()
 	}
 

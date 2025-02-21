@@ -30,7 +30,7 @@ func NewMetricCollectorSvc(
 }
 
 func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float64) {
-	s.log.Info("Update in service")
+	//s.log.Info("Update in service")
 
 	s.memStorage.UpdateValue(metricName, metricValue)
 }

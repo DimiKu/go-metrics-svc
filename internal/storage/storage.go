@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"go-metric-svc/dto"
 	"go-metric-svc/internal/customErrors"
 	"go-metric-svc/internal/models"
@@ -23,7 +22,7 @@ func NewMemStorage(metricsMap map[string]models.StorageValue, log *zap.SugaredLo
 }
 
 func (m *MemStorage) UpdateValue(metricName string, metricValue float64) {
-	m.log.Info("Update in storage")
+	//m.log.Info("Update in storage")
 	m.metricsMap[metricName] = models.StorageValue{Gauge: metricValue}
 }
 
@@ -40,7 +39,6 @@ func (m *MemStorage) SumValue(metricName string, metricValue int64) {
 }
 
 func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error) {
-	fmt.Print(m.metricsMap)
 	storageMetric := dto.MetricStorageDto(metric)
 
 	if _, exists := m.metricsMap[storageMetric.Name]; !exists {
