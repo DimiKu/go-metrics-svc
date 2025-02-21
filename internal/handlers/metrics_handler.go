@@ -127,7 +127,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 
 		rw.Header().Set("Content-Type", "application/json")
 
-		dtoMetric.Name = metric.ID
+		dtoMetric.Name = strings.ToLower(metric.ID)
 		dtoMetric.MetricType = strings.ToLower(metric.MType)
 		resMetric, err := service.GetMetricByName(dtoMetric)
 		if errors.Is(err, customerrors.ErrMetricNotExist) {
