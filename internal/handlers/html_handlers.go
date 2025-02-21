@@ -2,17 +2,9 @@ package handlers
 
 import (
 	"fmt"
-	"go-metric-svc/dto"
 	"go.uber.org/zap"
 	"net/http"
 )
-
-type Service interface {
-	UpdateStorage(metricName string, num float64)
-	SumInStorage(metricName string, num int64)
-	GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error)
-	GetAllMetrics() []string
-}
 
 func MetricReceiveAllMetricsHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {

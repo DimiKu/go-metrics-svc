@@ -15,6 +15,13 @@ import (
 	"strings"
 )
 
+type Service interface {
+	UpdateStorage(metricName string, num float64)
+	SumInStorage(metricName string, num int64) int64
+	GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error)
+	GetAllMetrics() []string
+}
+
 func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		req := strings.Split(r.URL.String(), "/")
@@ -44,26 +51,12 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 				http.Error(rw, err.Error(), http.StatusBadRequest)
 			}
 			log.Infof("Collect counter mertic with name: %s", metricName)
-			service.SumInStorage(lowerCaseMetricName, num)
+			netValue := service.SumInStorage(lowerCaseMetricName, num)
 			response.Status = true
 			metric.Name = lowerCaseMetricName
 			metric.MetricType = dto.MetricTypeHandlerCounterTypeDto
-			val, err := service.GetMetricByName(metric)
-			if err != nil {
-				return
-			}
-			intVal, err := strconv.Atoi(val.Value)
-			if err != nil {
-				fmt.Println("Ошибка:", err)
-				return
-			}
-			intMetricValue, err := strconv.Atoi(response.Message.MetricValue)
-			if err != nil {
-				fmt.Println("Ошибка:", err)
-				return
-			}
 
-			response.Message.MetricValue = strconv.Itoa(intMetricValue + intVal)
+			response.Message.MetricValue = strconv.FormatInt(netValue, 10)
 
 			utils.MakeResponse(rw, response)
 			return
@@ -201,17 +194,6 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 			return
 		}
 
-		response := utils.Response{
-			Status: true,
-			Message: struct {
-				MetricName  string `json:"name"`
-				MetricValue string `json:"value"`
-			}{
-				MetricName:  metric.ID,
-				MetricValue: "",
-			},
-		}
-
 		lowerCaseMetricName := strings.ToLower(metric.ID)
 		lowerCaseType := strings.ToLower(metric.MType)
 		rw.Header().Set("Content-Type", "application/json")
@@ -220,17 +202,17 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 			if metric.Delta == nil {
 				return
 			}
-			service.SumInStorage(lowerCaseMetricName, *metric.Delta)
-			response.Status = true
-			utils.MakeResponse(rw, response)
+			newValue := service.SumInStorage(lowerCaseMetricName, *metric.Delta)
+			metric.Delta = &newValue
+
+			utils.MakeMetricResponse(rw, metric)
 			return
 		case dto.MetricTypeHandlerGaugeTypeDto:
 			if metric.Value == nil {
 				return
 			}
 			service.UpdateStorage(lowerCaseMetricName, *metric.Value)
-			response.Status = true
-			utils.MakeResponse(rw, response)
+			utils.MakeMetricResponse(rw, metric)
 			return
 		}
 

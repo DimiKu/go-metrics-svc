@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/caarlos0/env/v11"
+	_ "github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"

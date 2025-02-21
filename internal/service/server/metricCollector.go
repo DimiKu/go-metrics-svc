@@ -8,7 +8,7 @@ import (
 
 type Storage interface {
 	UpdateValue(metricName string, metricValue float64)
-	SumValue(metricName string, metricValue int64)
+	SumValue(metricName string, metricValue int64) int64
 	GetMetricByName(metricName dto.MetricServiceDto) (dto.MetricServiceDto, error)
 	GetAllMetrics() []string
 }
@@ -35,9 +35,10 @@ func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float6
 	s.memStorage.UpdateValue(metricName, metricValue)
 }
 
-func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64) {
+func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64) int64 {
 	s.log.Info("Sum metric in service")
-	s.memStorage.SumValue(metricName, metricValue)
+	newValue := s.memStorage.SumValue(metricName, metricValue)
+	return newValue
 }
 
 func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error) {
