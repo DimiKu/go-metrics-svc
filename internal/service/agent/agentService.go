@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"go-metric-svc/internal/entities/agent"
@@ -102,13 +103,47 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 			log.Infof("Failed to marshal body %s", url)
 			return err
 		}
+		var b bytes.Buffer
 
-		res, err := http.Post(url, "Content-Type: application/json", bytes.NewBuffer(resMetrics))
+		w := gzip.NewWriter(&b)
+		_, err = w.Write(resMetrics)
+		if err != nil {
+			fmt.Println("Error writing gzip data:", err)
+			return err
+		}
+
+		err = w.Close()
+		if err != nil {
+			fmt.Println("Error closing gzip writer:", err)
+			return err
+		}
+
+		req, err := http.NewRequest("POST", url, &b)
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
 			return err
 		}
-		defer res.Body.Close()
+
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+		req.ContentLength = int64(b.Len())
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Error sending request:", err)
+			return nil
+		}
+		defer resp.Body.Close()
+
+		// для дебага
+		//body, err := io.ReadAll(resp.Body)
+		//if err != nil {
+		//	fmt.Println("Error reading response:", err)
+		//	return nil
+		//}
+		//fmt.Println("Response Status:", resp.Status)
+		//fmt.Println("Response Body:", string(body))
 	}
 
 	return nil

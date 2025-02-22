@@ -5,7 +5,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"
-	customLog "go-metric-svc/internal/logger"
+	"go-metric-svc/internal/middlewares/gzipper"
+	customLog "go-metric-svc/internal/middlewares/logger"
 	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
@@ -38,6 +39,8 @@ func main() {
 	collectorService := server.NewMetricCollectorSvc(memStorage, log)
 
 	r.Use(customLog.LogMiddleware(log))
+	r.Use(gzipper.GzipMiddleware(log))
+
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log))
 	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log))
 	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log))
