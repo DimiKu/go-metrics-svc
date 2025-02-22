@@ -121,31 +121,3 @@ func GzipMiddleware(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 		})
 	}
 }
-
-type gzipResponseWriter struct {
-	http.ResponseWriter
-	writer io.Writer
-	buffer *bytes.Buffer
-	status int
-}
-
-func (g *gzipResponseWriter) Write(b []byte) (int, error) {
-	if g.status == 0 {
-		g.status = http.StatusOK
-	}
-	if gz, ok := g.writer.(*gzip.Writer); ok {
-		return gz.Write(b)
-	}
-	return g.writer.Write(b)
-}
-
-func (g *gzipResponseWriter) Close() {
-	if gz, ok := g.writer.(*gzip.Writer); ok {
-		gz.Close()
-	}
-}
-
-func (g *gzipResponseWriter) WriteHeader(code int) {
-	g.status = code                    // Сохраняем код ответа
-	g.ResponseWriter.WriteHeader(code) // Передаём оригинальному ResponseWriter
-}
