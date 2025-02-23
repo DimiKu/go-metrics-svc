@@ -51,18 +51,16 @@ func NewConsumer(filename string, log *zap.SugaredLogger) (*Consumer, error) {
 	if err != nil {
 		log.Warnf("Failed to open file: %s", err)
 		file, err = os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0666)
-
-		if _, err := file.WriteString("{}"); err != nil {
-			log.Errorf("Failed to write empty JSON to file: %s", err)
+		if err != nil {
+			if _, err := file.WriteString("{}"); err != nil {
+				log.Errorf("Failed to write empty JSON to file: %s", err)
+				return nil, err
+			}
 			return &Consumer{
 				file: file,
 				log:  log,
 			}, nil
 		}
-		return &Consumer{
-			file: file,
-			log:  log,
-		}, nil
 	}
 
 	return &Consumer{
