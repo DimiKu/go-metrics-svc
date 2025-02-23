@@ -86,14 +86,14 @@ func main() {
 
 	storeTicker := time.NewTicker(time.Duration(saveDataInterval) * time.Second)
 
-	producer, err := utils.NewProducer(filePathToStoreMetrics, log)
-	if err != nil {
-		log.Errorf("Failed to create producer: %s", err)
-	}
-
 	go func() {
 		for {
 			<-storeTicker.C
+			producer, err := utils.NewProducer(filePathToStoreMetrics, log)
+			if err != nil {
+				log.Errorf("Failed to create producer: %s", err)
+			}
+
 			if err := producer.Write(initialStorage); err != nil {
 				log.Errorf("Failed to write data: %s", err)
 			}
@@ -110,7 +110,7 @@ func main() {
 		if err := producer.Write(initialStorage); err != nil {
 			log.Errorf("Failed to write data: %s", err)
 		}
-		os.Exit(1)
+		os.Exit(0)
 	}()
 
 	r.Use(customLog.LogMiddleware(log))
