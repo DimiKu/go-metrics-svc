@@ -49,8 +49,20 @@ type Consumer struct {
 func NewConsumer(filename string, log *zap.SugaredLogger) (*Consumer, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Errorf("Failed to open file: %s", err)
-		return nil, err
+		log.Warnf("Failed to open file: %s", err)
+		file, err = os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0666)
+
+		if _, err := file.WriteString("{}"); err != nil {
+			log.Errorf("Failed to write empty JSON to file: %s", err)
+			return &Consumer{
+				file: file,
+				log:  log,
+			}, nil
+		}
+		return &Consumer{
+			file: file,
+			log:  log,
+		}, nil
 	}
 
 	return &Consumer{
@@ -65,7 +77,9 @@ func (c *Consumer) ReadMetrics() (map[string]models.StorageValue, error) {
 	decoder := json.NewDecoder(c.file)
 	err := decoder.Decode(&initialStorage)
 	if err != nil {
-		c.log.Errorf("Failed to decode JSON: %s", err)
+		if err.Error() == "EOF" {
+			return initialStorage, nil
+		}
 		return nil, err
 	}
 

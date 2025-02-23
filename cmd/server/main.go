@@ -27,7 +27,6 @@ func main() {
 		addr                   string
 		saveInterval           string
 		filePathToStoreMetrics string
-		NeedRestore            bool
 	)
 
 	logger, _ := zap.NewProduction()
@@ -61,7 +60,7 @@ func main() {
 
 	initialStorage := make(map[string]models.StorageValue)
 
-	if cfg.NeedRestore || NeedRestore {
+	if cfg.NeedRestore || needRestore {
 		consumer, err := utils.NewConsumer(filePathToStoreMetrics, log)
 		if err != nil {
 			log.Errorf("Failed to create consumer: %s", err)
