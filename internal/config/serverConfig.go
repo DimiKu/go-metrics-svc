@@ -10,6 +10,7 @@ type ServerConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	NeedRestore     bool   `env:"RESTORE"`
 	StorageInterval string `env:"STORE_INTERVAL"`
+	ConnString      string `env:"DATABASE_DSN"`
 }
 
 func ValidateServerConfig(
@@ -17,7 +18,8 @@ func ValidateServerConfig(
 	flagRunAddr string,
 	storeInterval string,
 	fileStoragePath string,
-) (string, string, string) {
+	connString string,
+) (string, string, string, string) {
 	var addr, saveInterval, filePathToStoreMetrics string
 
 	err := env.Parse(&cfg)
@@ -43,5 +45,11 @@ func ValidateServerConfig(
 		filePathToStoreMetrics = fileStoragePath
 	}
 
-	return addr, saveInterval, filePathToStoreMetrics
+	if cfg.ConnString != "" {
+		connString = cfg.ConnString
+	} else {
+		connString = connString
+	}
+
+	return addr, saveInterval, filePathToStoreMetrics, connString
 }

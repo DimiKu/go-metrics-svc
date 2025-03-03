@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ type Service interface {
 	SumInStorage(metricName string, num int64) int64
 	GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error)
 	GetAllMetrics() []string
+	DbPing(ctx context.Context) (bool, error)
 }
 
 func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/middlewares/gzipper"
@@ -33,7 +36,17 @@ func main() {
 	r := chi.NewRouter()
 	parseFlags()
 
-	addr, saveInterval, filePathToStoreMetrics = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath)
+	addr, saveInterval, filePathToStoreMetrics, connString = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString)
+
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(ctx, connString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		//os.Exit(1)
+	}
+	defer conn.Close(ctx)
+
 	initialStorage := make(map[string]models.StorageValue)
 
 	if cfg.NeedRestore || needRestore {
@@ -51,8 +64,9 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
+	dbStorage := storage.NewDbStorage(conn, log)
 	memStorage := storage.NewMemStorage(initialStorage, log)
-	collectorService := server.NewMetricCollectorSvc(memStorage, log)
+	collectorService := server.NewMetricCollectorSvc(memStorage, dbStorage, log)
 
 	saveDataInterval, err := strconv.Atoi(saveInterval)
 	if err != nil {
@@ -95,6 +109,7 @@ func main() {
 	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log))
 	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log))
 	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log))
+	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
 
 	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log))
 	log.Infof("Server start on %s", addr)
