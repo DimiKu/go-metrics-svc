@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"go-metric-svc/dto"
 	customerrors "go-metric-svc/internal/customErrors"
+	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"net/http"
@@ -11,10 +15,16 @@ import (
 	"strings"
 )
 
+type Service interface {
+	UpdateStorage(metricName string, num float64)
+	SumInStorage(metricName string, num int64) int64
+	GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error)
+	GetAllMetrics() []string
+}
+
 func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		req := strings.Split(r.URL.String(), "/")
-
 		if len(req) < 5 {
 			http.Error(rw, "metric not found", http.StatusNotFound)
 			return
@@ -39,8 +49,11 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 				http.Error(rw, err.Error(), http.StatusBadRequest)
 			}
 			log.Infof("Collect counter mertic with name: %s", metricName)
-			service.SumInStorage(lowerCaseMetricName, num)
+			netValue := service.SumInStorage(lowerCaseMetricName, num)
 			response.Status = true
+
+			response.Message.MetricValue = strconv.FormatInt(netValue, 10)
+
 			utils.MakeResponse(rw, response)
 			return
 		} else if metricType == dto.MetricTypeHandlerGaugeTypeDto {
@@ -101,5 +114,103 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 
 		response.Message.MetricValue = metric.Value
 		utils.MakeResponse(rw, response)
+	}
+}
+
+func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		var metric models.Metrics
+		var buf bytes.Buffer
+		var dtoMetric dto.MetricServiceDto
+		var resMetric models.Metrics
+
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = json.Unmarshal(buf.Bytes(), &metric)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+
+		dtoMetric.Name = strings.ToLower(metric.ID)
+		dtoMetric.MetricType = strings.ToLower(metric.MType)
+		m, err := service.GetMetricByName(dtoMetric)
+		if errors.Is(err, customerrors.ErrMetricNotExist) {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resMetric.ID = m.Name
+		switch m.MetricType {
+		case dto.MetricTypeHandlerCounterTypeDto:
+			intValue, err := strconv.ParseInt(m.Value, 10, 64)
+			if err != nil {
+				fmt.Println("Ошибка:", err)
+				return
+			}
+			resMetric.Delta = &intValue
+		case dto.MetricTypeHandlerGaugeTypeDto:
+			float64Number, err := strconv.ParseFloat(m.Value, 64)
+			if err != nil {
+				fmt.Println("Ошибка:", err)
+				return
+			}
+			resMetric.Value = &float64Number
+		}
+		resMetric.MType = m.MetricType
+		utils.MakeMetricResponse(rw, resMetric)
+	}
+}
+
+func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		var metric models.Metrics
+		var buf bytes.Buffer
+
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = json.Unmarshal(buf.Bytes(), &metric)
+		if err != nil {
+			log.Infof("error with body %s", buf.Bytes())
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		lowerCaseMetricName := strings.ToLower(metric.ID)
+		lowerCaseType := strings.ToLower(metric.MType)
+		rw.Header().Set("Content-Type", "application/json")
+		switch lowerCaseType {
+		case dto.MetricTypeHandlerCounterTypeDto:
+			if metric.Delta == nil {
+				return
+			}
+			newValue := service.SumInStorage(lowerCaseMetricName, *metric.Delta)
+			metric.Delta = &newValue
+
+			utils.MakeMetricResponse(rw, metric)
+			return
+		case dto.MetricTypeHandlerGaugeTypeDto:
+			if metric.Value == nil {
+				return
+			}
+			service.UpdateStorage(lowerCaseMetricName, *metric.Value)
+			utils.MakeMetricResponse(rw, metric)
+			return
+		}
+
 	}
 }

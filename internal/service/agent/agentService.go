@@ -1,8 +1,12 @@
 package agent
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"go-metric-svc/internal/entities/agent"
+	"go-metric-svc/internal/models"
 	"go.uber.org/zap"
 	"math/rand"
 	"net/http"
@@ -15,6 +19,7 @@ func collectMetrics(counter *int) map[string]float32 {
 	runtime.ReadMemStats(&memStats)
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
+	pollCount := *counter
 
 	metricsMap := map[string]float32{
 		"Alloc":         float32(memStats.Alloc),
@@ -45,25 +50,20 @@ func collectMetrics(counter *int) map[string]float32 {
 		"Sys":           float32(memStats.Sys),
 		"TotalAlloc":    float32(memStats.TotalAlloc),
 		"RandomValue":   float32(r.Float64()),
-		"Counter":       float32(*counter),
+		"PollCount":     float32(pollCount),
 	}
 	return metricsMap
 }
 
-func PoolMetricsWorker(ch chan map[string]float32, interval time.Duration, counter *int) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		<-ticker.C
-		*counter += 1
-		metrics := collectMetrics(counter)
-		ch <- metrics
-	}
+func PoolMetricsWorker(ch chan map[string]float32, counter *int) map[string]float32 {
+	metrics := collectMetrics(counter)
+	return metrics
+	//ch <- metrics
 }
 
 func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
 	var url string
-
+	log.Info("start send metrics")
 	hostWithSchema := "http://" + host
 	for k, v := range metricsMap {
 		if k == agent.CounterMetricName {
@@ -71,16 +71,79 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 		} else {
 			url = fmt.Sprintf("%s/update/%s/%s/%f", hostWithSchema, "gauge", k, v)
 		}
-
-		log.Infof("Url is: %s", url)
-
-		log.Info(fmt.Sprintf("Send metric via url %s", url))
 		res, err := http.Post(url, "Content-Type: text/plain", nil)
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
 			return err
 		}
 		defer res.Body.Close()
+	}
+
+	return nil
+}
+
+func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
+	url := "http://" + host + "/update/"
+	for k, v := range metricsMap {
+		var metric models.Metrics
+		if k == agent.CounterMetricName {
+			metric.ID = k
+			metric.MType = agent.CounterMetricType
+			value := int64(v)
+			metric.Delta = &value
+		} else {
+			metric.ID = k
+			metric.MType = agent.GaugeMetricName
+			value := float64(v)
+			metric.Value = &value
+		}
+
+		resMetrics, err := json.Marshal(metric)
+		if err != nil {
+			log.Infof("Failed to marshal body %s", url)
+			return err
+		}
+		var b bytes.Buffer
+
+		w := gzip.NewWriter(&b)
+		_, err = w.Write(resMetrics)
+		if err != nil {
+			fmt.Println("Error writing gzip data:", err)
+			return err
+		}
+
+		err = w.Close()
+		if err != nil {
+			fmt.Println("Error closing gzip writer:", err)
+			return err
+		}
+
+		req, err := http.NewRequest("POST", url, &b)
+		if err != nil {
+			log.Infof("Send metric via url %s", url)
+			return err
+		}
+
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+		req.ContentLength = int64(b.Len())
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Error sending request:", err)
+			return nil
+		}
+		defer resp.Body.Close()
+
+		// для дебага
+		//body, err := io.ReadAll(resp.Body)
+		//if err != nil {
+		//	fmt.Println("Error reading response:", err)
+		//	return nil
+		//}
+		//fmt.Println("Response Status:", resp.Status)
+		//fmt.Println("Response Body:", string(body))
 	}
 
 	return nil
