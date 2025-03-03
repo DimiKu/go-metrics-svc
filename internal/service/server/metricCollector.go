@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"go-metric-svc/dto"
 	"go-metric-svc/internal/customErrors"
 	"go.uber.org/zap"
@@ -13,18 +14,25 @@ type Storage interface {
 	GetAllMetrics() []string
 }
 
+type DBStorage interface {
+	DBPing(ctx context.Context) (bool, error)
+}
+
 type MetricCollectorSvc struct {
 	memStorage Storage
+	dbStorage  DBStorage
 
 	log *zap.SugaredLogger
 }
 
 func NewMetricCollectorSvc(
 	memStorage Storage,
+	dbStorage DBStorage,
 	log *zap.SugaredLogger,
 ) *MetricCollectorSvc {
 	return &MetricCollectorSvc{
 		memStorage: memStorage,
+		dbStorage:  dbStorage,
 		log:        log,
 	}
 }
@@ -51,4 +59,8 @@ func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto) (dto.M
 
 func (s *MetricCollectorSvc) GetAllMetrics() []string {
 	return s.memStorage.GetAllMetrics()
+}
+
+func (s *MetricCollectorSvc) DBPing(ctx context.Context) (bool, error) {
+	return s.dbStorage.DBPing(ctx)
 }

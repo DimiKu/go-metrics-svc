@@ -16,7 +16,7 @@ func TestMetricCollectHandler(t *testing.T) {
 	logger := log.Sugar()
 	initialStorage := make(map[string]models.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, logger)
-	collectorService := server.NewMetricCollectorSvc(memStorage, logger)
+	collectorService := server.NewMetricCollectorSvc(memStorage, nil, logger)
 
 	type args struct {
 		statusCode int
@@ -74,7 +74,7 @@ func TestMetricReceiveHandler(t *testing.T) {
 		Gauge: 0.000000,
 	}
 	memStorage := storage.NewMemStorage(initialStorage, logger)
-	collectorService := server.NewMetricCollectorSvc(memStorage, logger)
+	collectorService := server.NewMetricCollectorSvc(memStorage, nil, logger)
 
 	type args struct {
 		statusCode int
