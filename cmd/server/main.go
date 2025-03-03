@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"
@@ -10,7 +9,6 @@ import (
 	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
-	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -35,33 +33,11 @@ func main() {
 	r := chi.NewRouter()
 	parseFlags()
 
-	err := env.Parse(&cfg)
-	if err != nil {
-		log.Errorf("Error parse env: %s", err)
-	}
-
-	if cfg.Addr != "" {
-		addr = cfg.Addr
-	} else {
-		addr = flagRunAddr
-	}
-
-	if cfg.StorageInterval != "" {
-		saveInterval = cfg.StorageInterval
-	} else {
-		saveInterval = storeInterval
-	}
-
-	if cfg.FileStoragePath != "" {
-		filePathToStoreMetrics = cfg.FileStoragePath
-	} else {
-		filePathToStoreMetrics = fileStoragePath
-	}
-
+	addr, saveInterval, filePathToStoreMetrics = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath)
 	initialStorage := make(map[string]models.StorageValue)
 
 	if cfg.NeedRestore || needRestore {
-		consumer, err := utils.NewConsumer(filePathToStoreMetrics, log)
+		consumer, err := storage.NewConsumer(filePathToStoreMetrics, log)
 		if err != nil {
 			log.Errorf("Failed to create consumer: %s", err)
 		}
@@ -88,7 +64,7 @@ func main() {
 	go func() {
 		for {
 			<-storeTicker.C
-			producer, err := utils.NewProducer(filePathToStoreMetrics, log)
+			producer, err := storage.NewProducer(filePathToStoreMetrics, log)
 			if err != nil {
 				log.Errorf("Failed to create producer: %s", err)
 			}
@@ -101,7 +77,7 @@ func main() {
 
 	go func() {
 		<-signalChan
-		producer, err := utils.NewProducer(filePathToStoreMetrics, log)
+		producer, err := storage.NewProducer(filePathToStoreMetrics, log)
 		if err != nil {
 			log.Errorf("Failed to create producer: %s", err)
 		}

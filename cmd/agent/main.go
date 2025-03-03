@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/caarlos0/env/v11"
 	"go-metric-svc/internal/config"
 	agentService "go-metric-svc/internal/service/agent"
 	"go.uber.org/zap"
@@ -23,22 +22,7 @@ func main() {
 	logger, _ := zap.NewProduction()
 	sugarLog := logger.Sugar()
 
-	err := env.Parse(&cfg)
-	if err != nil {
-		sugarLog.Errorf("Error parse env: %s", err)
-	}
-
-	if cfg.Addr != "" {
-		flagRunAddr = cfg.Addr
-	}
-
-	if cfg.PollInterval != "" {
-		poolInterval = cfg.PollInterval
-	}
-
-	if cfg.ReportInterval != "" {
-		sendInterval = cfg.ReportInterval
-	}
+	poolInterval, sendInterval, flagRunAddr = config.ValidateAgentConfig(cfg, flagRunAddr, poolInterval, sendInterval)
 
 	sugarLog.Infof("Pool intervar is %s", poolInterval)
 	poolDurationInterval, err := strconv.Atoi(poolInterval)
