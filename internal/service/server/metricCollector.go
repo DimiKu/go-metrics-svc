@@ -14,20 +14,20 @@ type Storage interface {
 	GetAllMetrics() []string
 }
 
-type DbStorage interface {
-	DbPing(ctx context.Context) (bool, error)
+type DBStorage interface {
+	DBPing(ctx context.Context) (bool, error)
 }
 
 type MetricCollectorSvc struct {
 	memStorage Storage
-	dbStorage  DbStorage
+	dbStorage  DBStorage
 
 	log *zap.SugaredLogger
 }
 
 func NewMetricCollectorSvc(
 	memStorage Storage,
-	dbStorage DbStorage,
+	dbStorage DBStorage,
 	log *zap.SugaredLogger,
 ) *MetricCollectorSvc {
 	return &MetricCollectorSvc{
@@ -61,6 +61,6 @@ func (s *MetricCollectorSvc) GetAllMetrics() []string {
 	return s.memStorage.GetAllMetrics()
 }
 
-func (s *MetricCollectorSvc) DbPing(ctx context.Context) (bool, error) {
-	return s.dbStorage.DbPing(ctx)
+func (s *MetricCollectorSvc) DBPing(ctx context.Context) (bool, error) {
+	return s.dbStorage.DBPing(ctx)
 }

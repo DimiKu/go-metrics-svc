@@ -6,20 +6,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type DbStorage struct {
+type DBStorage struct {
 	conn *pgx.Conn
 
 	log *zap.SugaredLogger
 }
 
-func NewDbStorage(conn *pgx.Conn, log *zap.SugaredLogger) *DbStorage {
-	return &DbStorage{
+func NewDBStorage(conn *pgx.Conn, log *zap.SugaredLogger) *DBStorage {
+	return &DBStorage{
 		conn: conn,
 		log:  log,
 	}
 }
 
-func (d *DbStorage) DbPing(ctx context.Context) (bool, error) {
+func (d *DBStorage) DBPing(ctx context.Context) (bool, error) {
 	var result int
 	if d.conn == nil {
 		return false, nil

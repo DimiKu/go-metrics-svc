@@ -64,7 +64,7 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	dbStorage := storage.NewDbStorage(conn, log)
+	dbStorage := storage.NewDBStorage(conn, log)
 	memStorage := storage.NewMemStorage(initialStorage, log)
 	collectorService := server.NewMetricCollectorSvc(memStorage, dbStorage, log)
 

@@ -18,9 +18,9 @@ func ValidateServerConfig(
 	flagRunAddr string,
 	storeInterval string,
 	fileStoragePath string,
-	connString string,
+	connectionString string,
 ) (string, string, string, string) {
-	var addr, saveInterval, filePathToStoreMetrics string
+	var addr, saveInterval, filePathToStoreMetrics, connString string
 
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -48,7 +48,7 @@ func ValidateServerConfig(
 	if cfg.ConnString != "" {
 		connString = cfg.ConnString
 	} else {
-		connString = connString
+		connString = connectionString
 	}
 
 	return addr, saveInterval, filePathToStoreMetrics, connString

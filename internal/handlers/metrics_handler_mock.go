@@ -5,6 +5,7 @@
 package handlers
 
 import (
+	context "context"
 	dto "go-metric-svc/dto"
 	reflect "reflect"
 
@@ -32,6 +33,21 @@ func NewMockService(ctrl *gomock.Controller) *MockService {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
+}
+
+// DbPing mocks base method.
+func (m *MockService) DBPing(ctx context.Context) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DBPing", ctx)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DbPing indicates an expected call of DbPing.
+func (mr *MockServiceMockRecorder) DbPing(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DBPing", reflect.TypeOf((*MockService)(nil).DBPing), ctx)
 }
 
 // GetAllMetrics mocks base method.
