@@ -69,17 +69,16 @@ func NewConsumer(filename string, log *zap.SugaredLogger) (*Consumer, error) {
 	}, nil
 }
 
-func (c *Consumer) ReadMetrics() (map[string]models.StorageValue, error) {
-	initialStorage := make(map[string]models.StorageValue)
+func (c *Consumer) ReadMetrics(storage map[string]models.StorageValue) (map[string]models.StorageValue, error) {
 	defer c.file.Close()
 	decoder := json.NewDecoder(c.file)
-	err := decoder.Decode(&initialStorage)
+	err := decoder.Decode(&storage)
 	if err != nil {
 		if err.Error() == "EOF" {
-			return initialStorage, nil
+			return storage, nil
 		}
 		return nil, err
 	}
 
-	return initialStorage, nil
+	return storage, nil
 }

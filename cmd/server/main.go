@@ -65,7 +65,7 @@ func main() {
 			log.Errorf("Failed to create consumer: %s", err)
 		}
 
-		initialStorage, err = consumer.ReadMetrics()
+		initialStorage, err = consumer.ReadMetrics(initialStorage)
 		if err != nil {
 			log.Errorf("Failed to load metris: %s", err)
 		}
@@ -89,6 +89,7 @@ func main() {
 				log.Errorf("Failed to create producer: %s", err)
 			}
 
+			log.Infof("Stor: %s", initialStorage)
 			if err := producer.Write(initialStorage); err != nil {
 				log.Errorf("Failed to write data: %s", err)
 			}
@@ -97,6 +98,7 @@ func main() {
 
 	go func() {
 		<-signalChan
+		log.Infof("Start gracefull shutdown")
 		producer, err := storage.NewProducer(filePathToStoreMetrics, log)
 		if err != nil {
 			log.Errorf("Failed to create producer: %s", err)

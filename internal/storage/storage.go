@@ -25,6 +25,7 @@ func NewMemStorage(metricsMap map[string]models.StorageValue, log *zap.SugaredLo
 func (m *MemStorage) UpdateValue(metricName string, metricValue float64) {
 	//m.log.Info("Update in storage")
 	m.metricsMap[metricName] = models.StorageValue{Gauge: metricValue}
+	m.log.Infof("storage is: %s", m.metricsMap)
 }
 
 func (m *MemStorage) SumValue(metricName string, metricValue int64) int64 {
