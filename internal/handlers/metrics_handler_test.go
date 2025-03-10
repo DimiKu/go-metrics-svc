@@ -70,7 +70,7 @@ func TestMetricReceiveHandler(t *testing.T) {
 	logger := log.Sugar()
 
 	initialStorage := make(map[string]models.StorageValue)
-	initialStorage["gccpufraction"] = models.StorageValue{
+	initialStorage["GCCPUFraction"] = models.StorageValue{
 		Gauge: 0.000000,
 	}
 	memStorage := storage.NewMemStorage(initialStorage, logger)
