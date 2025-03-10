@@ -22,7 +22,7 @@ func Test_sendMetrics(t *testing.T) {
 
 	initialStorage := make(map[string]models.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, log)
-	collectorService := server.NewMetricCollectorSvc(memStorage, nil, log)
+	collectorService := server.NewMetricCollectorSvc(memStorage, log)
 	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, log))
 
 	server := &http.Server{

@@ -192,7 +192,7 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 			return
 		}
 
-		lowerCaseMetricName := strings.ToLower(metric.ID)
+		lowerCaseMetricName := metric.ID //strings.ToLower(metric.ID)
 		lowerCaseType := strings.ToLower(metric.MType)
 		rw.Header().Set("Content-Type", "application/json")
 		switch lowerCaseType {

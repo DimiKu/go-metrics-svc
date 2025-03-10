@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"go-metric-svc/dto"
 	"go-metric-svc/internal/customErrors"
 	"go-metric-svc/internal/models"
@@ -63,4 +64,7 @@ func (m *MemStorage) GetAllMetrics() []string {
 		metricSlide = append(metricSlide, k)
 	}
 	return metricSlide
+}
+func (m *MemStorage) DBPing(ctx context.Context) (bool, error) {
+	return false, nil
 }

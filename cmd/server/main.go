@@ -40,14 +40,24 @@ func main() {
 
 	ctx := context.Background()
 
-	conn, err := pgx.Connect(ctx, connString)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		//os.Exit(1)
-	}
-	defer conn.Close(ctx)
-
 	initialStorage := make(map[string]models.StorageValue)
+	memStorage := storage.NewMemStorage(initialStorage, log)
+
+	var collectorService *server.MetricCollectorSvc
+
+	if connString != "" {
+		conn, err := pgx.Connect(ctx, connString)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+			//os.Exit(1)
+		}
+		defer conn.Close(ctx)
+
+		dbStorage := storage.NewDBStorage(conn, log, ctx)
+		collectorService = server.NewMetricCollectorSvc(dbStorage, log)
+	} else {
+		collectorService = server.NewMetricCollectorSvc(memStorage, log)
+	}
 
 	if cfg.NeedRestore || needRestore {
 		consumer, err := storage.NewConsumer(filePathToStoreMetrics, log)
@@ -63,10 +73,6 @@ func main() {
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	dbStorage := storage.NewDBStorage(conn, log)
-	memStorage := storage.NewMemStorage(initialStorage, log)
-	collectorService := server.NewMetricCollectorSvc(memStorage, dbStorage, log)
 
 	saveDataInterval, err := strconv.Atoi(saveInterval)
 	if err != nil {

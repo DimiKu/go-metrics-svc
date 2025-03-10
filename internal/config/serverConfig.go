@@ -10,7 +10,7 @@ type ServerConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	NeedRestore     bool   `env:"RESTORE"`
 	StorageInterval string `env:"STORE_INTERVAL"`
-	ConnString      string `env:"DATABASE_DSN"`
+	ConnString      string `env:"DATABASE_DSN"` // 'postgres://myuser:metricpass@postgres:5432/metric_db?sslmode=disable'
 }
 
 func ValidateServerConfig(
