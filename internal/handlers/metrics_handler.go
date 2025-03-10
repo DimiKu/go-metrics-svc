@@ -33,7 +33,8 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 		}
 
 		metricType, metricName, metricValue := req[2], req[3], req[4]
-		lowerCaseMetricName := strings.ToLower(metricName)
+		//lowerCaseMetricName := strings.ToLower(metricName)
+		lowerCaseMetricName := metricName
 		log.Infof("Got req with metricType: %s, metricName: %s, metricValue: %s", metricType, metricName, metricValue)
 		response := utils.Response{
 			Status: true,
@@ -140,7 +141,8 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 
 		rw.Header().Set("Content-Type", "application/json")
 
-		dtoMetric.Name = strings.ToLower(metric.ID)
+		//dtoMetric.Name = strings.ToLower(metric.ID)
+		dtoMetric.Name = metric.ID
 		dtoMetric.MetricType = strings.ToLower(metric.MType)
 		m, err := service.GetMetricByName(dtoMetric)
 		if errors.Is(err, customerrors.ErrMetricNotExist) {
