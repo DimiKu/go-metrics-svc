@@ -35,14 +35,14 @@ func TestGzipCompression(t *testing.T) {
 	defer srv.Close()
 
 	requestBody := `{
-        "id": "PollCount", 
+        "id": "pollcount", 
 		"type": "counter", 
 		"delta": 2
     }`
 
 	// ожидаемое содержимое тела ответа при успешном запросе
 	successBody := `{
-        "id": "PollCount", 
+        "id": "pollcount", 
 		"type": "counter", 
 		"delta": 2
     }`

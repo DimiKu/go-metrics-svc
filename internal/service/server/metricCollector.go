@@ -24,13 +24,11 @@ type MetricCollectorSvc struct {
 
 func NewMetricCollectorSvc(
 	memStorage Storage,
-	//dbStorage DBStorage,
 	log *zap.SugaredLogger,
 ) *MetricCollectorSvc {
 	return &MetricCollectorSvc{
 		storage: memStorage,
-		//dbStorage:  dbStorage,
-		log: log,
+		log:     log,
 	}
 }
 

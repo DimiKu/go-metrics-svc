@@ -35,7 +35,7 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// DbPing mocks base method.
+// DBPing mocks base method.
 func (m *MockService) DBPing(ctx context.Context) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DBPing", ctx)
@@ -44,8 +44,8 @@ func (m *MockService) DBPing(ctx context.Context) (bool, error) {
 	return ret0, ret1
 }
 
-// DbPing indicates an expected call of DbPing.
-func (mr *MockServiceMockRecorder) DbPing(ctx interface{}) *gomock.Call {
+// DBPing indicates an expected call of DBPing.
+func (mr *MockServiceMockRecorder) DBPing(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DBPing", reflect.TypeOf((*MockService)(nil).DBPing), ctx)
 }
