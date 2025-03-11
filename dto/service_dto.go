@@ -10,3 +10,8 @@ var (
 )
 
 type MetricServiceDto server.Metric
+
+type MetricCollectionDto struct {
+	GaugeCollection   []MetricServiceDto
+	CounterCollection []MetricServiceDto
+}

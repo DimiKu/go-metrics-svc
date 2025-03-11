@@ -32,3 +32,11 @@ func MakeMetricResponse(w http.ResponseWriter, metric models.Metrics) {
 	}
 	w.Write(jsonRes)
 }
+
+func MakeMetricsResponse(w http.ResponseWriter, metrics []models.Metrics) {
+	jsonRes, err := json.Marshal(metrics)
+	if err != nil {
+		log.Fatal("can't decode response", zap.Error(err))
+	}
+	w.Write(jsonRes)
+}

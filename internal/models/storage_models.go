@@ -9,3 +9,8 @@ type DBMetricServiceDto struct {
 	Name  string `db:"metric_name"`
 	Value string `db:"metric_value"`
 }
+
+var (
+	GaugeTableName   = "gauge_metrics"
+	CounterTableName = "counter_metrics"
+)

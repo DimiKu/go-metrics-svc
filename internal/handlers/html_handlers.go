@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"go.uber.org/zap"
 	"net/http"
 )
 
-func MetricReceiveAllMetricsHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricReceiveAllMetricsHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		type PageData struct {
 			Items []string
@@ -25,7 +26,7 @@ func MetricReceiveAllMetricsHandler(service Service, log *zap.SugaredLogger) fun
 	</html>
     `
 		var collectedMetricsString string
-		metrics := service.GetAllMetrics()
+		metrics := service.GetAllMetrics(ctx)
 		for _, metric := range metrics {
 			metric = metric + "\n"
 			collectedMetricsString += metric

@@ -3,6 +3,7 @@ package gzipper
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go-metric-svc/internal/handlers"
@@ -26,10 +27,11 @@ func TestGzipCompression(t *testing.T) {
 	mockMetric.ID = "PollCount"
 	mockMetric.Delta = &mockValue
 	lowerCaseMetricName := strings.ToLower(mockMetric.ID)
+	ctx := context.Background()
 
-	mockService.EXPECT().SumInStorage(lowerCaseMetricName, *mockMetric.Delta).AnyTimes().Return(mockValue)
+	mockService.EXPECT().SumInStorage(lowerCaseMetricName, *mockMetric.Delta, ctx).AnyTimes().Return(mockValue)
 
-	handler := http.HandlerFunc(handlers.MetricJSONCollectHandler(mockService, s))
+	handler := http.HandlerFunc(handlers.MetricJSONCollectHandler(mockService, s, ctx))
 	gzipHandler := GzipMiddleware(s)(handler)
 	srv := httptest.NewServer(gzipHandler)
 	defer srv.Close()

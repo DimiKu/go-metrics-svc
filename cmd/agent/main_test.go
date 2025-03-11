@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/service/agent"
@@ -19,11 +20,12 @@ func Test_sendMetrics(t *testing.T) {
 
 	logger, _ := zap.NewProduction()
 	log := logger.Sugar()
+	ctx := context.Background()
 
 	initialStorage := make(map[string]models.StorageValue)
 	memStorage := storage.NewMemStorage(initialStorage, log)
 	collectorService := server.NewMetricCollectorSvc(memStorage, log)
-	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, log))
+	handler := http.HandlerFunc(handlers.MetricCollectHandler(collectorService, log, ctx))
 
 	server := &http.Server{
 		Addr:    ":8080",

@@ -17,14 +17,15 @@ import (
 )
 
 type Service interface {
-	UpdateStorage(metricName string, num float64)
-	SumInStorage(metricName string, num int64) int64
-	GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error)
-	GetAllMetrics() []string
+	UpdateStorage(metricName string, num float64, ctx context.Context)
+	SumInStorage(metricName string, num int64, ctx context.Context) int64
+	GetMetricByName(metric dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error)
+	GetAllMetrics(ctx context.Context) []string
 	DBPing(ctx context.Context) (bool, error)
+	CollectMetricsArray(ctx context.Context, metrics []dto.MetricServiceDto) error
 }
 
-func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		req := strings.Split(r.URL.String(), "/")
 		if len(req) < 5 {
@@ -52,7 +53,7 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 				http.Error(rw, err.Error(), http.StatusBadRequest)
 			}
 			log.Infof("Collect counter mertic with name: %s", metricName)
-			netValue := service.SumInStorage(lowerCaseMetricName, num)
+			netValue := service.SumInStorage(lowerCaseMetricName, num, ctx)
 			response.Status = true
 
 			response.Message.MetricValue = strconv.FormatInt(netValue, 10)
@@ -65,7 +66,7 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 				http.Error(rw, err.Error(), http.StatusBadRequest)
 			}
 			log.Infof("Collect counter gauge with name: %s", metricName)
-			service.UpdateStorage(lowerCaseMetricName, num)
+			service.UpdateStorage(lowerCaseMetricName, num, ctx)
 			response.Status = true
 			utils.MakeResponse(rw, response)
 			return
@@ -75,7 +76,7 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.
 	}
 }
 
-func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricReceiveHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var MetricDto dto.MetricServiceDto
 
@@ -102,7 +103,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 			},
 		}
 
-		metric, err := service.GetMetricByName(MetricDto)
+		metric, err := service.GetMetricByName(MetricDto, ctx)
 		if errors.Is(err, customerrors.ErrMetricNotExist) {
 			log.Warnf("Not found metric by name: %s", metricName)
 			http.Error(rw, "Metric not found", http.StatusNotFound)
@@ -119,7 +120,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger) func(rw http.
 	}
 }
 
-func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
 		var buf bytes.Buffer
@@ -142,7 +143,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 
 		dtoMetric.Name = metric.ID
 		dtoMetric.MetricType = strings.ToLower(metric.MType)
-		m, err := service.GetMetricByName(dtoMetric)
+		m, err := service.GetMetricByName(dtoMetric, ctx)
 		if errors.Is(err, customerrors.ErrMetricNotExist) {
 			http.Error(rw, err.Error(), http.StatusNotFound)
 			return
@@ -174,7 +175,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger) func(rw h
 	}
 }
 
-func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
+func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
 		var buf bytes.Buffer
@@ -199,7 +200,7 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 			if metric.Delta == nil {
 				return
 			}
-			newValue := service.SumInStorage(metric.ID, *metric.Delta)
+			newValue := service.SumInStorage(metric.ID, *metric.Delta, ctx)
 			metric.Delta = &newValue
 
 			utils.MakeMetricResponse(rw, metric)
@@ -208,10 +209,55 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger) func(rw h
 			if metric.Value == nil {
 				return
 			}
-			service.UpdateStorage(metric.ID, *metric.Value)
+			service.UpdateStorage(metric.ID, *metric.Value, ctx)
 			utils.MakeMetricResponse(rw, metric)
 			return
 		}
 
+	}
+}
+
+func MetricJSONArrayCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx := context.Background()
+		var metrics []models.Metrics
+
+		var buf bytes.Buffer
+
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+		log.Infof("Body: %s", buf)
+
+		err = json.Unmarshal(buf.Bytes(), &metrics)
+		if err != nil {
+			log.Infof("error with body %s", buf.Bytes())
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		serviceMetrics := make([]dto.MetricServiceDto, len(metrics))
+		rw.Header().Set("Content-Type", "application/json")
+		for n, metric := range metrics {
+			var m dto.MetricServiceDto
+			m.Name = metric.ID
+			m.MetricType = metric.MType
+			switch m.MetricType {
+			case dto.MetricTypeHandlerGaugeTypeDto:
+				m.Value = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
+			case dto.MetricTypeHandlerCounterTypeDto:
+				m.Value = strconv.FormatInt(*metric.Delta, 10)
+			}
+
+			serviceMetrics[n] = m
+		}
+
+		err = service.CollectMetricsArray(ctx, serviceMetrics)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+		}
+		utils.MakeMetricsResponse(rw, metrics)
 	}
 }

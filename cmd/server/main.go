@@ -53,7 +53,7 @@ func main() {
 		}
 		defer conn.Close(ctx)
 
-		dbStorage := storage.NewDBStorage(conn, log, ctx)
+		dbStorage := storage.NewDBStorage(conn, log)
 		collectorService = server.NewMetricCollectorSvc(dbStorage, log)
 	} else {
 		collectorService = server.NewMetricCollectorSvc(memStorage, log)
@@ -89,7 +89,6 @@ func main() {
 				log.Errorf("Failed to create producer: %s", err)
 			}
 
-			log.Infof("Stor: %s", initialStorage)
 			if err := producer.Write(initialStorage); err != nil {
 				log.Errorf("Failed to write data: %s", err)
 			}
@@ -113,13 +112,15 @@ func main() {
 	r.Use(customLog.LogMiddleware(log))
 	r.Use(gzipper.GzipMiddleware(log))
 
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log))
-	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log))
-	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log))
-	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log))
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
+	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx))
+	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
+	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
 	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
 
-	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log))
+	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log, ctx))
 	log.Infof("Server start on %s", addr)
 	err = http.ListenAndServe(addr, r)
 	if err != nil {
