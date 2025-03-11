@@ -128,13 +128,18 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 		req.Header.Set("Content-Type", "application/json")
 		req.ContentLength = int64(b.Len())
 
-		client := &http.Client{}
-		resp, err := client.Do(req)
+		err = doReqWithRetry(3, *req, *log)
 		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return nil
+			//return err
+			log.Errorf("Error in send metrics: %s", err)
 		}
-		defer resp.Body.Close()
+		//client := &http.Client{}
+		//resp, err := client.Do(req)
+		//if err != nil {
+		//	fmt.Println("Error sending request:", err)
+		//	return nil
+		//}
+		//defer resp.Body.Close()
 
 		// для дебага
 		//body, err := io.ReadAll(resp.Body)
@@ -147,4 +152,34 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 	}
 
 	return nil
+}
+
+func doReqWithRetry(retry int, req http.Request, log zap.SugaredLogger) error {
+	for i := 1; i < retry; i++ {
+		client := &http.Client{}
+		resp, err := client.Do(&req)
+		if resp != nil && isRetryableStatusCode(resp.StatusCode) {
+			continue
+		}
+		if err != nil {
+			log.Infof("Error sending request:", err)
+			return nil
+		}
+		defer resp.Body.Close()
+		return nil
+	}
+	return nil
+}
+
+func isRetryableStatusCode(statusCode int) bool {
+	switch statusCode {
+	case http.StatusInternalServerError, // 500
+		http.StatusBadGateway,         // 502
+		http.StatusServiceUnavailable, // 503
+		http.StatusGatewayTimeout,     // 504
+		http.StatusRequestTimeout,     // 408
+		http.StatusTooManyRequests:    // 429
+		return true
+	}
+	return false
 }

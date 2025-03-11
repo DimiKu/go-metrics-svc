@@ -2,23 +2,26 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go-metric-svc/dto"
+	customerrors "go-metric-svc/internal/customErrors"
 	"go-metric-svc/internal/entities/server"
 	"go-metric-svc/internal/models"
+	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"strconv"
 )
 
 type DBStorage struct {
 	conn *pgx.Conn
+	pool *pgxpool.Pool
 
 	log *zap.SugaredLogger
 }
 
-func NewDBStorage(conn *pgx.Conn, log *zap.SugaredLogger) *DBStorage {
+func NewDBStorage(conn *pgx.Conn, pool *pgxpool.Pool, log *zap.SugaredLogger) *DBStorage {
 	ctx := context.Background()
 	_, err := conn.Exec(ctx, CreateCounterMetricTable)
 	if err != nil {
@@ -32,6 +35,7 @@ func NewDBStorage(conn *pgx.Conn, log *zap.SugaredLogger) *DBStorage {
 
 	return &DBStorage{
 		conn: conn,
+		pool: pool,
 		log:  log,
 	}
 }
@@ -55,20 +59,26 @@ func (d *DBStorage) DBPing(ctx context.Context) (bool, error) {
 func (d *DBStorage) UpdateValue(metricName string, metricValue float64, ctx context.Context) {
 	var currentValue float32
 	GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.GaugeTableName)
-	err := d.conn.QueryRow(ctx, GetMetricByNameWithTable, metricName).Scan(&currentValue)
+	res, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metricName)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			InsertNewMetricValueWithTableName := fmt.Sprintf(InsertNewMetricValue, models.GaugeTableName)
-			_, err = d.conn.Exec(ctx, InsertNewMetricValueWithTableName, metricName, metricValue)
-			if err != nil {
-				d.log.Errorf("Error in InsertNewMetricValue: %s", err)
-			}
-		} else {
+		d.log.Errorf("Error in InsertNewMetricValue: %s", err)
+	}
+	if res != nil && !res.Next() {
+		InsertNewMetricValueWithTableName := fmt.Sprintf(InsertNewMetricValue, models.GaugeTableName)
+		_, err := utils.RetryableExec(ctx, d.pool, InsertNewMetricValueWithTableName, metricName, metricValue)
+		if err != nil {
+			d.log.Errorf("Error in InsertNewMetricValue: %s", err)
+		}
+	} else {
+		err = res.Scan(&currentValue)
+		if err != nil {
 			d.log.Errorf("Error in UpdateValue: %s", err)
+
 		}
 	}
+
 	UpdateMetricValueWithTable := fmt.Sprintf(UpdateMetricValue, models.GaugeTableName)
-	_, err = d.conn.Exec(ctx, UpdateMetricValueWithTable, metricValue, metricName)
+	_, err = utils.RetryableExec(ctx, d.pool, UpdateMetricValueWithTable, metricValue, metricName)
 	if err != nil {
 		d.log.Errorf("Error in save gauge_metrics: %s", err)
 	}
@@ -77,23 +87,32 @@ func (d *DBStorage) UpdateValue(metricName string, metricValue float64, ctx cont
 func (d *DBStorage) SumValue(metricName string, metricValue int64, ctx context.Context) int64 {
 	var currentValue int64
 	GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.CounterTableName)
-	err := d.conn.QueryRow(ctx, GetMetricByNameWithTable, metricName).Scan(&currentValue)
+	res, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metricName)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			insertNewMetricValueWithTableName := fmt.Sprintf(InsertNewMetricValue, models.CounterTableName)
-			_, err = d.conn.Exec(ctx, insertNewMetricValueWithTableName, metricName, metricValue)
-			if err != nil {
-				d.log.Errorf("Error in InsertNewMetricValueWithTableName: %s", err)
-			}
-			return metricValue
-		} else {
-			d.log.Errorf("Error in GetMetricByName: %s, metricName: %s", err, metricName)
+		d.log.Errorf("Error in SumValue: %s", err)
+	}
+	if !res.Next() {
+		insertNewMetricValueWithTableName := fmt.Sprintf(InsertNewMetricValue, models.CounterTableName)
+		_, err = utils.RetryableExec(ctx, d.pool, insertNewMetricValueWithTableName, metricName, metricValue)
+		if err != nil {
+			d.log.Errorf("Error in InsertNewMetricValueWithTableName: %s", err)
+		}
+		return metricValue
+	} else {
+		err = res.Scan(&currentValue)
+		if err != nil {
+			d.log.Errorf("Error in UpdateValue: %s", err)
+
 		}
 	}
+	err = res.Scan(&currentValue)
+	if err != nil {
+		d.log.Errorf("Error in Scan SumValue: %s, metricName: %s", err, metricName)
 
+	}
 	newValue := currentValue + metricValue
 	UpdateMetricValueWithTable := fmt.Sprintf(UpdateMetricValue, models.CounterTableName)
-	_, err = d.conn.Exec(ctx, UpdateMetricValueWithTable, newValue, metricName)
+	_, err = utils.RetryableExec(ctx, d.pool, UpdateMetricValueWithTable, newValue, metricName)
 	if err != nil {
 		d.log.Errorf("Error in UpdateMetricValue: %s, metricName: %s", err, metricName)
 
@@ -107,16 +126,33 @@ func (d *DBStorage) GetMetricByName(metric dto.MetricServiceDto, ctx context.Con
 	var resultMetric dto.MetricServiceDto
 	if metric.MetricType == server.GaugeMetrics {
 		GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.GaugeTableName)
-		err := d.conn.QueryRow(ctx, GetMetricByNameWithTable, metric.Name).Scan(&dbMetric.Value)
+		rows, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metric.Name)
+		if err != nil {
+			return dto.MetricServiceDto{}, customerrors.ErrMetricNotExist
+		}
+		if !rows.Next() {
+			return dto.MetricServiceDto{}, customerrors.ErrMetricNotExist
+		}
+		err = rows.Scan(&dbMetric.Value)
 		if err != nil {
 			return dto.MetricServiceDto{}, err
+
 		}
+
 	} else {
 		GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.CounterTableName)
-		err := d.conn.QueryRow(ctx, GetMetricByNameWithTable, metric.Name).Scan(&dbMetric.Value)
+		rows, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metric.Name)
 		if err != nil {
 			return dto.MetricServiceDto{}, err
 		}
+		if !rows.Next() {
+			return dto.MetricServiceDto{}, customerrors.ErrMetricNotExist
+		}
+		err = rows.Scan(&dbMetric.Value)
+		if err != nil {
+			return dto.MetricServiceDto{}, err
+		}
+
 	}
 
 	resultMetric.MetricType = metric.MetricType

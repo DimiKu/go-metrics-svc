@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/middlewares/gzipper"
@@ -53,7 +54,20 @@ func main() {
 		}
 		defer conn.Close(ctx)
 
-		dbStorage := storage.NewDBStorage(conn, log)
+		config, err := pgxpool.ParseConfig(connString)
+		if err != nil {
+			log.Fatalf("Unable to parse database URL: %v\n", err)
+		}
+
+		config.MaxConns = 300
+
+		pool, err := pgxpool.NewWithConfig(context.Background(), config)
+		if err != nil {
+			log.Fatalf("Unable to create connection pool: %v\n", err)
+		}
+		defer pool.Close()
+
+		dbStorage := storage.NewDBStorage(conn, pool, log)
 		collectorService = server.NewMetricCollectorSvc(dbStorage, log)
 	} else {
 		collectorService = server.NewMetricCollectorSvc(memStorage, log)
@@ -113,7 +127,6 @@ func main() {
 	r.Use(gzipper.GzipMiddleware(log))
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
-	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
 	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
 	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx))
 	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
