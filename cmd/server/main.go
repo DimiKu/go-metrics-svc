@@ -41,11 +41,68 @@ func main() {
 
 	ctx := context.Background()
 
-	initialStorage := make(map[string]models.StorageValue)
-	memStorage := storage.NewMemStorage(initialStorage, log)
+	collectorService, initialStorage := configureCollectorServiceAndStorage(connString, needRestore, filePathToStoreMetrics, cfg, ctx, log)
 
+	saveDataInterval, err := strconv.Atoi(saveInterval)
+	if err != nil {
+		log.Error(err)
+	}
+
+	storeTicker := time.NewTicker(time.Duration(saveDataInterval) * time.Second)
+
+	if initialStorage != nil {
+		go func() {
+			for {
+				<-storeTicker.C
+				producer, err := storage.NewProducer(filePathToStoreMetrics, log)
+				if err != nil {
+					log.Errorf("Failed to create producer: %s", err)
+				}
+
+				if err := producer.Write(initialStorage); err != nil {
+					log.Errorf("Failed to write data: %s", err)
+				}
+			}
+		}()
+
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			<-signalChan
+			log.Infof("Start gracefull shutdown")
+			producer, err := storage.NewProducer(filePathToStoreMetrics, log)
+			if err != nil {
+				log.Errorf("Failed to create producer: %s", err)
+			}
+
+			if err := producer.Write(initialStorage); err != nil {
+				log.Errorf("Failed to write data: %s", err)
+			}
+			os.Exit(0)
+		}()
+	}
+
+	r.Use(customLog.LogMiddleware(log))
+	r.Use(gzipper.GzipMiddleware(log))
+
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
+	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx))
+	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
+	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
+	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
+
+	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log, ctx))
+	log.Infof("Server start on %s", addr)
+	err = http.ListenAndServe(addr, r)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func configureCollectorServiceAndStorage(connString string, needRestore bool, filePathToStoreMetrics string, cfg config.ServerConfig, ctx context.Context, log *zap.SugaredLogger) (*server.MetricCollectorSvc, map[string]models.StorageValue) {
 	var collectorService *server.MetricCollectorSvc
-
 	if connString != "" {
 		conn, err := pgx.Connect(ctx, connString)
 		if err != nil {
@@ -70,73 +127,23 @@ func main() {
 		dbStorage := storage.NewDBStorage(conn, pool, log)
 		collectorService = server.NewMetricCollectorSvc(dbStorage, log)
 	} else {
+		initialStorage := make(map[string]models.StorageValue)
+		memStorage := storage.NewMemStorage(initialStorage, log)
 		collectorService = server.NewMetricCollectorSvc(memStorage, log)
-	}
-
-	if cfg.NeedRestore || needRestore {
-		consumer, err := storage.NewConsumer(filePathToStoreMetrics, log)
-		if err != nil {
-			log.Errorf("Failed to create consumer: %s", err)
-		}
-
-		initialStorage, err = consumer.ReadMetrics(initialStorage)
-		if err != nil {
-			log.Errorf("Failed to load metris: %s", err)
-		}
-	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	saveDataInterval, err := strconv.Atoi(saveInterval)
-	if err != nil {
-		log.Error(err)
-	}
-
-	storeTicker := time.NewTicker(time.Duration(saveDataInterval) * time.Second)
-
-	go func() {
-		for {
-			<-storeTicker.C
-			producer, err := storage.NewProducer(filePathToStoreMetrics, log)
+		if cfg.NeedRestore || needRestore {
+			consumer, err := storage.NewConsumer(filePathToStoreMetrics, log)
 			if err != nil {
-				log.Errorf("Failed to create producer: %s", err)
+				log.Errorf("Failed to create consumer: %s", err)
 			}
 
-			if err := producer.Write(initialStorage); err != nil {
-				log.Errorf("Failed to write data: %s", err)
+			initialStorage, err = consumer.ReadMetrics(initialStorage)
+			if err != nil {
+				log.Errorf("Failed to load metris: %s", err)
 			}
 		}
-	}()
 
-	go func() {
-		<-signalChan
-		log.Infof("Start gracefull shutdown")
-		producer, err := storage.NewProducer(filePathToStoreMetrics, log)
-		if err != nil {
-			log.Errorf("Failed to create producer: %s", err)
-		}
-
-		if err := producer.Write(initialStorage); err != nil {
-			log.Errorf("Failed to write data: %s", err)
-		}
-		os.Exit(0)
-	}()
-
-	r.Use(customLog.LogMiddleware(log))
-	r.Use(gzipper.GzipMiddleware(log))
-
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
-	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
-	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx))
-	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
-	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
-	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
-
-	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log, ctx))
-	log.Infof("Server start on %s", addr)
-	err = http.ListenAndServe(addr, r)
-	if err != nil {
-		panic(err)
+		return collectorService, initialStorage
 	}
+
+	return collectorService, nil
 }

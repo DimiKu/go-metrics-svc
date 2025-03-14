@@ -41,14 +41,6 @@ func RetryableQuery(ctx context.Context, pool *pgxpool.Pool, log *zap.SugaredLog
 	var row pgx.Rows
 	var err error
 
-	//ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
-	//defer cancel()
-	//conn, err := pool.Acquire(ctx)
-	//if err != nil {
-	//	log.Errorf("Error with pool acquire: %s", err)
-	//	return nil, err
-	//}
-	//
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -76,11 +68,6 @@ func RetryableQuery(ctx context.Context, pool *pgxpool.Pool, log *zap.SugaredLog
 func RetryableExec(ctx context.Context, pool *pgxpool.Pool, command string, args ...interface{}) (pgconn.CommandTag, error) {
 	var tag pgconn.CommandTag
 	var err error
-	//
-	//conn, err := pool.Acquire(ctx)
-	//if err != nil {
-	//	return tag, err
-	//}
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {

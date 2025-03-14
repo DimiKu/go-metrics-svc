@@ -65,11 +65,12 @@ func (mr *MockServiceMockRecorder) DBPing(ctx interface{}) *gomock.Call {
 }
 
 // GetAllMetrics mocks base method.
-func (m *MockService) GetAllMetrics(ctx context.Context) []string {
+func (m *MockService) GetAllMetrics(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAllMetrics", ctx)
 	ret0, _ := ret[0].([]string)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetAllMetrics indicates an expected call of GetAllMetrics.
@@ -94,11 +95,12 @@ func (mr *MockServiceMockRecorder) GetMetricByName(metric, ctx interface{}) *gom
 }
 
 // SumInStorage mocks base method.
-func (m *MockService) SumInStorage(metricName string, num int64, ctx context.Context) int64 {
+func (m *MockService) SumInStorage(metricName string, num int64, ctx context.Context) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SumInStorage", metricName, num, ctx)
 	ret0, _ := ret[0].(int64)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SumInStorage indicates an expected call of SumInStorage.
@@ -108,9 +110,11 @@ func (mr *MockServiceMockRecorder) SumInStorage(metricName, num, ctx interface{}
 }
 
 // UpdateStorage mocks base method.
-func (m *MockService) UpdateStorage(metricName string, num float64, ctx context.Context) {
+func (m *MockService) UpdateStorage(metricName string, num float64, ctx context.Context) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateStorage", metricName, num, ctx)
+	ret := m.ctrl.Call(m, "UpdateStorage", metricName, num, ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // UpdateStorage indicates an expected call of UpdateStorage.

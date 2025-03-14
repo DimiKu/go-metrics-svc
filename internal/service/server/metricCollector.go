@@ -9,10 +9,10 @@ import (
 )
 
 type Storage interface {
-	UpdateValue(metricName string, metricValue float64, ctx context.Context)
-	SumValue(metricName string, metricValue int64, ctx context.Context) int64
+	UpdateValue(metricName string, metricValue float64, ctx context.Context) error
+	SumValue(metricName string, metricValue int64, ctx context.Context) (int64, error)
 	GetMetricByName(metricName dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error)
-	GetAllMetrics(ctx context.Context) []string
+	GetAllMetrics(ctx context.Context) ([]string, error)
 	DBPing(ctx context.Context) (bool, error)
 	SaveMetrics(ctx context.Context, metrics dto.MetricCollectionDto) error
 }
@@ -34,16 +34,24 @@ func NewMetricCollectorSvc(
 	}
 }
 
-func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float64, ctx context.Context) {
+func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float64, ctx context.Context) error {
 	//s.log.Info("Update in service")
 
-	s.storage.UpdateValue(metricName, metricValue, ctx)
+	if err := s.storage.UpdateValue(metricName, metricValue, ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64, ctx context.Context) int64 {
+func (s *MetricCollectorSvc) SumInStorage(metricName string, metricValue int64, ctx context.Context) (int64, error) {
 	s.log.Info("Sum metric in service")
-	newValue := s.storage.SumValue(metricName, metricValue, ctx)
-	return newValue
+	newValue, err := s.storage.SumValue(metricName, metricValue, ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return newValue, nil
 }
 
 func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error) {
@@ -54,8 +62,13 @@ func (s *MetricCollectorSvc) GetMetricByName(metric dto.MetricServiceDto, ctx co
 	return collectedMetric, nil
 }
 
-func (s *MetricCollectorSvc) GetAllMetrics(ctx context.Context) []string {
-	return s.storage.GetAllMetrics(ctx)
+func (s *MetricCollectorSvc) GetAllMetrics(ctx context.Context) ([]string, error) {
+	metrics, err := s.storage.GetAllMetrics(ctx)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return metrics, err
 }
 
 func (s *MetricCollectorSvc) DBPing(ctx context.Context) (bool, error) {

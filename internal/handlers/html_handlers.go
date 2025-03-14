@@ -26,7 +26,10 @@ func MetricReceiveAllMetricsHandler(service Service, log *zap.SugaredLogger, ctx
 	</html>
     `
 		var collectedMetricsString string
-		metrics := service.GetAllMetrics(ctx)
+		metrics, err := service.GetAllMetrics(ctx)
+		if err != nil {
+			rw.Write([]byte(err.Error()))
+		}
 		for _, metric := range metrics {
 			metric = metric + "\n"
 			collectedMetricsString += metric

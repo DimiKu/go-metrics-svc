@@ -22,13 +22,14 @@ func NewMemStorage(metricsMap map[string]models.StorageValue, log *zap.SugaredLo
 	}
 }
 
-func (m *MemStorage) UpdateValue(metricName string, metricValue float64, ctx context.Context) {
+func (m *MemStorage) UpdateValue(metricName string, metricValue float64, ctx context.Context) error {
 	//m.log.Info("Update in storage")
 	m.metricsMap[metricName] = models.StorageValue{Gauge: metricValue}
 	m.log.Infof("storage is: %s", m.metricsMap)
+	return nil
 }
 
-func (m *MemStorage) SumValue(metricName string, metricValue int64, ctx context.Context) int64 {
+func (m *MemStorage) SumValue(metricName string, metricValue int64, ctx context.Context) (int64, error) {
 	if value, exists := m.metricsMap[metricName]; exists {
 		m.metricsMap[metricName] = models.StorageValue{
 			Counter: value.Counter + metricValue,
@@ -39,7 +40,7 @@ func (m *MemStorage) SumValue(metricName string, metricValue int64, ctx context.
 		}
 	}
 
-	return m.metricsMap[metricName].Counter
+	return m.metricsMap[metricName].Counter, nil
 }
 
 func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error) {
@@ -59,12 +60,12 @@ func (m *MemStorage) GetMetricByName(metric dto.MetricServiceDto, ctx context.Co
 
 }
 
-func (m *MemStorage) GetAllMetrics(ctx context.Context) []string {
+func (m *MemStorage) GetAllMetrics(ctx context.Context) ([]string, error) {
 	metricSlide := make([]string, len(m.metricsMap))
 	for k := range m.metricsMap {
 		metricSlide = append(metricSlide, k)
 	}
-	return metricSlide
+	return metricSlide, nil
 }
 func (m *MemStorage) DBPing(ctx context.Context) (bool, error) {
 	return false, nil
@@ -76,7 +77,9 @@ func (m *MemStorage) SaveMetrics(ctx context.Context, metrics dto.MetricCollecti
 		if err != nil {
 			return err
 		}
-		m.SumValue(metric.Name, value, ctx)
+		if _, err = m.SumValue(metric.Name, value, ctx); err != nil {
+			return err
+		}
 	}
 
 	for _, metric := range metrics.GaugeCollection {
@@ -85,7 +88,9 @@ func (m *MemStorage) SaveMetrics(ctx context.Context, metrics dto.MetricCollecti
 			return err
 		}
 
-		m.UpdateValue(metric.Name, value, ctx)
+		if err := m.UpdateValue(metric.Name, value, ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil

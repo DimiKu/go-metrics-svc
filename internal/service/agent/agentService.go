@@ -128,18 +128,10 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 		req.Header.Set("Content-Type", "application/json")
 		req.ContentLength = int64(b.Len())
 
-		err = doReqWithRetry(3, *req, *log)
+		err = doReqWithRetry(*req, *log)
 		if err != nil {
-			//return err
 			log.Errorf("Error in send metrics: %s", err)
 		}
-		//client := &http.Client{}
-		//resp, err := client.Do(req)
-		//if err != nil {
-		//	fmt.Println("Error sending request:", err)
-		//	return nil
-		//}
-		//defer resp.Body.Close()
 
 		// для дебага
 		//body, err := io.ReadAll(resp.Body)
@@ -154,8 +146,8 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 	return nil
 }
 
-func doReqWithRetry(retry int, req http.Request, log zap.SugaredLogger) error {
-	for i := 1; i < retry; i++ {
+func doReqWithRetry(req http.Request, log zap.SugaredLogger) error {
+	for i := 1; i < 6; i += 2 {
 		client := &http.Client{}
 		resp, err := client.Do(&req)
 		if resp != nil && isRetryableStatusCode(resp.StatusCode) {
@@ -166,6 +158,7 @@ func doReqWithRetry(retry int, req http.Request, log zap.SugaredLogger) error {
 			return nil
 		}
 		defer resp.Body.Close()
+		time.Sleep(time.Duration(i))
 		return nil
 	}
 	return nil

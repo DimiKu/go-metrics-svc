@@ -17,10 +17,10 @@ import (
 )
 
 type Service interface {
-	UpdateStorage(metricName string, num float64, ctx context.Context)
-	SumInStorage(metricName string, num int64, ctx context.Context) int64
+	UpdateStorage(metricName string, num float64, ctx context.Context) error
+	SumInStorage(metricName string, num int64, ctx context.Context) (int64, error)
 	GetMetricByName(metric dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error)
-	GetAllMetrics(ctx context.Context) []string
+	GetAllMetrics(ctx context.Context) ([]string, error)
 	DBPing(ctx context.Context) (bool, error)
 	CollectMetricsArray(ctx context.Context, metrics []dto.MetricServiceDto) error
 }
@@ -53,7 +53,10 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger, ctx context.C
 				http.Error(rw, err.Error(), http.StatusBadRequest)
 			}
 			log.Infof("Collect counter mertic with name: %s", metricName)
-			netValue := service.SumInStorage(lowerCaseMetricName, num, ctx)
+			netValue, err := service.SumInStorage(lowerCaseMetricName, num, ctx)
+			if err != nil {
+				http.Error(rw, err.Error(), http.StatusInternalServerError)
+			}
 			response.Status = true
 
 			response.Message.MetricValue = strconv.FormatInt(netValue, 10)
@@ -200,7 +203,10 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx conte
 			if metric.Delta == nil {
 				return
 			}
-			newValue := service.SumInStorage(metric.ID, *metric.Delta, ctx)
+			newValue, err := service.SumInStorage(metric.ID, *metric.Delta, ctx)
+			if err != nil {
+				http.Error(rw, err.Error(), http.StatusInternalServerError)
+			}
 			metric.Delta = &newValue
 
 			utils.MakeMetricResponse(rw, metric)

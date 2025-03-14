@@ -56,24 +56,26 @@ func (d *DBStorage) DBPing(ctx context.Context) (bool, error) {
 	return false, err
 }
 
-func (d *DBStorage) UpdateValue(metricName string, metricValue float64, ctx context.Context) {
+func (d *DBStorage) UpdateValue(metricName string, metricValue float64, ctx context.Context) error {
 	var currentValue float32
 	GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.GaugeTableName)
 	res, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metricName)
 	if err != nil {
 		d.log.Errorf("Error in InsertNewMetricValue: %s", err)
+		return err
 	}
 	if res != nil && !res.Next() {
 		InsertNewMetricValueWithTableName := fmt.Sprintf(InsertNewMetricValue, models.GaugeTableName)
 		_, err := utils.RetryableExec(ctx, d.pool, InsertNewMetricValueWithTableName, metricName, metricValue)
 		if err != nil {
 			d.log.Errorf("Error in InsertNewMetricValue: %s", err)
+			return err
 		}
 	} else {
 		err = res.Scan(&currentValue)
 		if err != nil {
 			d.log.Errorf("Error in UpdateValue: %s", err)
-
+			return err
 		}
 	}
 
@@ -81,10 +83,13 @@ func (d *DBStorage) UpdateValue(metricName string, metricValue float64, ctx cont
 	_, err = utils.RetryableExec(ctx, d.pool, UpdateMetricValueWithTable, metricValue, metricName)
 	if err != nil {
 		d.log.Errorf("Error in save gauge_metrics: %s", err)
+		return err
 	}
+
+	return nil
 }
 
-func (d *DBStorage) SumValue(metricName string, metricValue int64, ctx context.Context) int64 {
+func (d *DBStorage) SumValue(metricName string, metricValue int64, ctx context.Context) (int64, error) {
 	var currentValue int64
 	GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.CounterTableName)
 	res, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metricName)
@@ -96,29 +101,30 @@ func (d *DBStorage) SumValue(metricName string, metricValue int64, ctx context.C
 		_, err = utils.RetryableExec(ctx, d.pool, insertNewMetricValueWithTableName, metricName, metricValue)
 		if err != nil {
 			d.log.Errorf("Error in InsertNewMetricValueWithTableName: %s", err)
+			return 0, err
 		}
-		return metricValue
+		return metricValue, nil
 	} else {
 		err = res.Scan(&currentValue)
 		if err != nil {
 			d.log.Errorf("Error in UpdateValue: %s", err)
-
+			return 0, err
 		}
 	}
 	err = res.Scan(&currentValue)
 	if err != nil {
 		d.log.Errorf("Error in Scan SumValue: %s, metricName: %s", err, metricName)
-
+		return 0, err
 	}
 	newValue := currentValue + metricValue
 	UpdateMetricValueWithTable := fmt.Sprintf(UpdateMetricValue, models.CounterTableName)
 	_, err = utils.RetryableExec(ctx, d.pool, UpdateMetricValueWithTable, newValue, metricName)
 	if err != nil {
 		d.log.Errorf("Error in UpdateMetricValue: %s, metricName: %s", err, metricName)
-
+		return 0, err
 	}
 
-	return newValue
+	return newValue, nil
 }
 
 func (d *DBStorage) GetMetricByName(metric dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error) {
@@ -138,7 +144,6 @@ func (d *DBStorage) GetMetricByName(metric dto.MetricServiceDto, ctx context.Con
 			return dto.MetricServiceDto{}, err
 
 		}
-
 	} else {
 		GetMetricByNameWithTable := fmt.Sprintf(GetMetricByName, models.CounterTableName)
 		rows, err := utils.RetryableQuery(ctx, d.pool, d.log, GetMetricByNameWithTable, metric.Name)
@@ -162,8 +167,8 @@ func (d *DBStorage) GetMetricByName(metric dto.MetricServiceDto, ctx context.Con
 	return resultMetric, nil
 }
 
-func (d *DBStorage) GetAllMetrics(ctx context.Context) []string {
-	return []string{}
+func (d *DBStorage) GetAllMetrics(ctx context.Context) ([]string, error) {
+	return []string{}, nil
 }
 
 func (d *DBStorage) SaveMetrics(ctx context.Context, metrics dto.MetricCollectionDto) error {
