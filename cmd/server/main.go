@@ -79,14 +79,18 @@ func main() {
 			if err := producer.Write(initialStorage); err != nil {
 				log.Errorf("Failed to write data: %s", err)
 			}
+
 			os.Exit(0)
 		}()
 	} else {
 		go func() {
 			<-signalChan
 			log.Infof("Start gracefull shutdown and closed db conn")
+
 			conn.Close(ctx)
 			pool.Close()
+
+			os.Exit(0)
 		}()
 	}
 
@@ -123,15 +127,17 @@ func configureCollectorServiceAndStorage(
 ) {
 	var collectorService *server.MetricCollectorSvc
 	if connString != "" {
+		fmt.Println(connString)
 		conn, err := pgx.Connect(ctx, connString)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-			//os.Exit(1)
+			os.Exit(1)
 		}
 
 		DBConfig, err := pgxpool.ParseConfig(connString)
 		if err != nil {
 			log.Fatalf("Unable to parse database URL: %v\n", err)
+			os.Exit(1)
 		}
 
 		DBConfig.MaxConns = 300
