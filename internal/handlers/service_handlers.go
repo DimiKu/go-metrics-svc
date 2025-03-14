@@ -11,6 +11,7 @@ func StoragePingHandler(service Service, ctx context.Context, log *zap.SugaredLo
 		ping, err := service.DBPing(ctx)
 		if err != nil {
 			http.Error(rw, "Failed connect to db", http.StatusInternalServerError)
+			log.Error("Failed connect to db: %s", err)
 			return
 		}
 

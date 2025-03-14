@@ -45,7 +45,8 @@ func (d *DBStorage) DBPing(ctx context.Context) (bool, error) {
 	if d.conn == nil {
 		return false, nil
 	}
-	err := d.conn.QueryRow(ctx, PingQuery).Scan(&result)
+
+	err := d.pool.QueryRow(ctx, PingQuery).Scan(&result)
 	if err != nil {
 		return false, err
 	}
@@ -177,7 +178,9 @@ func (d *DBStorage) SaveMetrics(ctx context.Context, metrics dto.MetricCollectio
 		if err != nil {
 			return err
 		}
-		d.SumValue(m.Name, value, ctx)
+		if _, err := d.SumValue(m.Name, value, ctx); err != nil {
+			return err
+		}
 	}
 
 	for _, m := range metrics.GaugeCollection {
@@ -186,7 +189,9 @@ func (d *DBStorage) SaveMetrics(ctx context.Context, metrics dto.MetricCollectio
 			return err
 		}
 
-		d.UpdateValue(m.Name, value, ctx)
+		if err := d.UpdateValue(m.Name, value, ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil

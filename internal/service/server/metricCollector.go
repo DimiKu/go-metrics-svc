@@ -72,7 +72,11 @@ func (s *MetricCollectorSvc) GetAllMetrics(ctx context.Context) ([]string, error
 }
 
 func (s *MetricCollectorSvc) DBPing(ctx context.Context) (bool, error) {
-	return s.storage.DBPing(ctx)
+	ping, err := s.storage.DBPing(ctx)
+	if err != nil {
+		return false, err
+	}
+	return ping, nil
 }
 
 func (s *MetricCollectorSvc) CollectMetricsArray(ctx context.Context, metrics []dto.MetricServiceDto) error {

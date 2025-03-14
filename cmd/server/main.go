@@ -41,7 +41,7 @@ func main() {
 
 	ctx := context.Background()
 
-	collectorService, initialStorage := configureCollectorServiceAndStorage(connString, needRestore, filePathToStoreMetrics, cfg, ctx, log)
+	collectorService, initialStorage, pool, conn := configureCollectorServiceAndStorage(connString, needRestore, filePathToStoreMetrics, cfg, ctx, log)
 
 	saveDataInterval, err := strconv.Atoi(saveInterval)
 	if err != nil {
@@ -49,6 +49,9 @@ func main() {
 	}
 
 	storeTicker := time.NewTicker(time.Duration(saveDataInterval) * time.Second)
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	if initialStorage != nil {
 		go func() {
@@ -65,9 +68,6 @@ func main() {
 			}
 		}()
 
-		signalChan := make(chan os.Signal, 1)
-		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
 		go func() {
 			<-signalChan
 			log.Infof("Start gracefull shutdown")
@@ -80,6 +80,13 @@ func main() {
 				log.Errorf("Failed to write data: %s", err)
 			}
 			os.Exit(0)
+		}()
+	} else {
+		go func() {
+			<-signalChan
+			log.Infof("Start gracefull shutdown and closed db conn")
+			conn.Close(ctx)
+			pool.Close()
 		}()
 	}
 
@@ -101,7 +108,19 @@ func main() {
 	}
 }
 
-func configureCollectorServiceAndStorage(connString string, needRestore bool, filePathToStoreMetrics string, cfg config.ServerConfig, ctx context.Context, log *zap.SugaredLogger) (*server.MetricCollectorSvc, map[string]models.StorageValue) {
+func configureCollectorServiceAndStorage(
+	connString string,
+	needRestore bool,
+	filePathToStoreMetrics string,
+	cfg config.ServerConfig,
+	ctx context.Context,
+	log *zap.SugaredLogger,
+) (
+	*server.MetricCollectorSvc,
+	map[string]models.StorageValue,
+	*pgxpool.Pool,
+	*pgx.Conn,
+) {
 	var collectorService *server.MetricCollectorSvc
 	if connString != "" {
 		conn, err := pgx.Connect(ctx, connString)
@@ -109,23 +128,22 @@ func configureCollectorServiceAndStorage(connString string, needRestore bool, fi
 			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 			//os.Exit(1)
 		}
-		defer conn.Close(ctx)
 
-		config, err := pgxpool.ParseConfig(connString)
+		DBConfig, err := pgxpool.ParseConfig(connString)
 		if err != nil {
 			log.Fatalf("Unable to parse database URL: %v\n", err)
 		}
 
-		config.MaxConns = 300
+		DBConfig.MaxConns = 300
 
-		pool, err := pgxpool.NewWithConfig(context.Background(), config)
+		pool, err := pgxpool.NewWithConfig(context.Background(), DBConfig)
 		if err != nil {
 			log.Fatalf("Unable to create connection pool: %v\n", err)
 		}
-		defer pool.Close()
 
 		dbStorage := storage.NewDBStorage(conn, pool, log)
 		collectorService = server.NewMetricCollectorSvc(dbStorage, log)
+		return collectorService, nil, pool, conn
 	} else {
 		initialStorage := make(map[string]models.StorageValue)
 		memStorage := storage.NewMemStorage(initialStorage, log)
@@ -142,8 +160,6 @@ func configureCollectorServiceAndStorage(connString string, needRestore bool, fi
 			}
 		}
 
-		return collectorService, initialStorage
+		return collectorService, initialStorage, nil, nil
 	}
-
-	return collectorService, nil
 }
