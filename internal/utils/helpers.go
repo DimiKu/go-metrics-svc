@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,7 +31,7 @@ func CommitOrRollback(tx pgx.Tx, err error, ctx context.Context) {
 func isRetryable(err error) bool {
 	if pgErr, ok := err.(*pgconn.PgError); ok {
 		switch pgErr.Code {
-		case "08000", "08001", "08003", "08004":
+		case pgerrcode.ConnectionException, pgerrcode.ConnectionDoesNotExist, pgerrcode.ConnectionFailure, pgerrcode.CannotConnectNow:
 			return true
 		}
 	}
