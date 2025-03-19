@@ -10,6 +10,7 @@ type ServerConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	NeedRestore     bool   `env:"RESTORE"`
 	StorageInterval string `env:"STORE_INTERVAL"`
+	ConnString      string `env:"DATABASE_DSN"` // 'postgres://myuser:metricpass@postgres:5432/metric_db?sslmode=disable'
 }
 
 func ValidateServerConfig(
@@ -17,8 +18,9 @@ func ValidateServerConfig(
 	flagRunAddr string,
 	storeInterval string,
 	fileStoragePath string,
-) (string, string, string) {
-	var addr, saveInterval, filePathToStoreMetrics string
+	connectionString string,
+) (string, string, string, string) {
+	var addr, saveInterval, filePathToStoreMetrics, connString string
 
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -43,5 +45,11 @@ func ValidateServerConfig(
 		filePathToStoreMetrics = fileStoragePath
 	}
 
-	return addr, saveInterval, filePathToStoreMetrics
+	if cfg.ConnString != "" {
+		connString = cfg.ConnString
+	} else {
+		connString = connectionString
+	}
+
+	return addr, saveInterval, filePathToStoreMetrics, connString
 }

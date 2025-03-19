@@ -1,7 +1,6 @@
 package gzipper
 
 import (
-	"bytes"
 	"compress/gzip"
 	"go.uber.org/zap"
 	"io"
@@ -111,12 +110,12 @@ func GzipMiddleware(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 			// передаём управление хендлеру
 			next.ServeHTTP(ow, r)
 
-			var v bytes.Buffer
-			_, err := v.ReadFrom(r.Body)
-			if err != nil {
-				http.Error(w, "Ошибка чтения тела запроса", http.StatusInternalServerError)
-				return
-			}
+			//var v bytes.Buffer
+			//_, err := v.ReadFrom(r.Body)
+			//if err != nil {
+			//	http.Error(w, "Ошибка чтения тела запроса", http.StatusInternalServerError)
+			//	return
+			//}
 
 		})
 	}

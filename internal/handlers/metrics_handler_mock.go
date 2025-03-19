@@ -5,6 +5,7 @@
 package handlers
 
 import (
+	context "context"
 	dto "go-metric-svc/dto"
 	reflect "reflect"
 
@@ -34,57 +35,90 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// GetAllMetrics mocks base method.
-func (m *MockService) GetAllMetrics() []string {
+// CollectMetricsArray mocks base method.
+func (m *MockService) CollectMetricsArray(ctx context.Context, metrics []dto.MetricServiceDto) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllMetrics")
-	ret0, _ := ret[0].([]string)
+	ret := m.ctrl.Call(m, "CollectMetricsArray", ctx, metrics)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// GetAllMetrics indicates an expected call of GetAllMetrics.
-func (mr *MockServiceMockRecorder) GetAllMetrics() *gomock.Call {
+// CollectMetricsArray indicates an expected call of CollectMetricsArray.
+func (mr *MockServiceMockRecorder) CollectMetricsArray(ctx, metrics interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMetrics", reflect.TypeOf((*MockService)(nil).GetAllMetrics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CollectMetricsArray", reflect.TypeOf((*MockService)(nil).CollectMetricsArray), ctx, metrics)
+}
+
+// DBPing mocks base method.
+func (m *MockService) DBPing(ctx context.Context) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DBPing", ctx)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DBPing indicates an expected call of DBPing.
+func (mr *MockServiceMockRecorder) DBPing(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DBPing", reflect.TypeOf((*MockService)(nil).DBPing), ctx)
+}
+
+// GetAllMetrics mocks base method.
+func (m *MockService) GetAllMetrics(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllMetrics", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllMetrics indicates an expected call of GetAllMetrics.
+func (mr *MockServiceMockRecorder) GetAllMetrics(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMetrics", reflect.TypeOf((*MockService)(nil).GetAllMetrics), ctx)
 }
 
 // GetMetricByName mocks base method.
-func (m *MockService) GetMetricByName(metric dto.MetricServiceDto) (dto.MetricServiceDto, error) {
+func (m *MockService) GetMetricByName(metric dto.MetricServiceDto, ctx context.Context) (dto.MetricServiceDto, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetricByName", metric)
+	ret := m.ctrl.Call(m, "GetMetricByName", metric, ctx)
 	ret0, _ := ret[0].(dto.MetricServiceDto)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMetricByName indicates an expected call of GetMetricByName.
-func (mr *MockServiceMockRecorder) GetMetricByName(metric interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) GetMetricByName(metric, ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByName", reflect.TypeOf((*MockService)(nil).GetMetricByName), metric)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByName", reflect.TypeOf((*MockService)(nil).GetMetricByName), metric, ctx)
 }
 
 // SumInStorage mocks base method.
-func (m *MockService) SumInStorage(metricName string, num int64) int64 {
+func (m *MockService) SumInStorage(metricName string, num int64, ctx context.Context) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SumInStorage", metricName, num)
+	ret := m.ctrl.Call(m, "SumInStorage", metricName, num, ctx)
 	ret0, _ := ret[0].(int64)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SumInStorage indicates an expected call of SumInStorage.
-func (mr *MockServiceMockRecorder) SumInStorage(metricName, num interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) SumInStorage(metricName, num, ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SumInStorage", reflect.TypeOf((*MockService)(nil).SumInStorage), metricName, num)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SumInStorage", reflect.TypeOf((*MockService)(nil).SumInStorage), metricName, num, ctx)
 }
 
 // UpdateStorage mocks base method.
-func (m *MockService) UpdateStorage(metricName string, num float64) {
+func (m *MockService) UpdateStorage(metricName string, num float64, ctx context.Context) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateStorage", metricName, num)
+	ret := m.ctrl.Call(m, "UpdateStorage", metricName, num, ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // UpdateStorage indicates an expected call of UpdateStorage.
-func (mr *MockServiceMockRecorder) UpdateStorage(metricName, num interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) UpdateStorage(metricName, num, ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStorage", reflect.TypeOf((*MockService)(nil).UpdateStorage), metricName, num)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStorage", reflect.TypeOf((*MockService)(nil).UpdateStorage), metricName, num, ctx)
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/service/server"
@@ -56,7 +57,8 @@ func TestMetricCollectHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tt.req, nil)
 			w := httptest.NewRecorder()
-			handlerFunc := MetricCollectHandler(collectorService, logger)
+			ctx := context.Background()
+			handlerFunc := MetricCollectHandler(collectorService, logger, ctx)
 			handlerFunc(w, req)
 			result := w.Result()
 			defer result.Body.Close()
@@ -70,7 +72,7 @@ func TestMetricReceiveHandler(t *testing.T) {
 	logger := log.Sugar()
 
 	initialStorage := make(map[string]models.StorageValue)
-	initialStorage["gccpufraction"] = models.StorageValue{
+	initialStorage["GCCPUFraction"] = models.StorageValue{
 		Gauge: 0.000000,
 	}
 	memStorage := storage.NewMemStorage(initialStorage, logger)
@@ -113,8 +115,9 @@ func TestMetricReceiveHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tt.req, nil)
+			ctx := context.Background()
 			w := httptest.NewRecorder()
-			handlerFunc := MetricReceiveHandler(collectorService, logger)
+			handlerFunc := MetricReceiveHandler(collectorService, logger, ctx)
 			handlerFunc(w, req)
 			result := w.Result()
 			defer result.Body.Close()
