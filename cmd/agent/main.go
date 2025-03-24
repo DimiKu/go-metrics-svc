@@ -22,7 +22,7 @@ func main() {
 	logger, _ := zap.NewProduction()
 	sugarLog := logger.Sugar()
 
-	poolInterval, sendInterval, flagRunAddr = config.ValidateAgentConfig(cfg, flagRunAddr, poolInterval, sendInterval)
+	poolInterval, sendInterval, flagRunAddr, useHash = config.ValidateAgentConfig(cfg, flagRunAddr, poolInterval, sendInterval, useHash)
 
 	sugarLog.Infof("Pool intervar is %s", poolInterval)
 	poolDurationInterval, err := strconv.Atoi(poolInterval)
@@ -61,7 +61,7 @@ func main() {
 			metrics := metricsMap
 			metricsMapLock.Unlock()
 
-			if err := agentService.SendJSONMetrics(metrics, sugarLog, flagRunAddr); err != nil {
+			if err := agentService.SendJSONMetrics(metrics, sugarLog, flagRunAddr, useHash); err != nil {
 				sugarLog.Error(err)
 			}
 			counter = 0

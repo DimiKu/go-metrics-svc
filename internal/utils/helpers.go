@@ -50,13 +50,13 @@ func RetryableQuery(ctx context.Context, pool *pgxpool.Pool, log *zap.SugaredLog
 	defer CommitOrRollback(tx, err, ctx)
 
 	for i := 0; i < 3; i++ {
-		log.Infof("Im do query: %s, time: %d", query, i)
+		log.Debugf("Im do query: %s, time: %d", query, i)
 		row, err = tx.Query(ctx, query, args...)
 		if err != nil {
 			if isRetryable(err) {
-				log.Infof("Retrying query due to error: %v\n", err)
+				log.Debugf("Retrying query due to error: %v\n", err)
 				time.Sleep(time.Duration(i) * time.Second)
-				log.Infof("Im do query: %s", query)
+				log.Debugf("Im do query: %s", query)
 				continue
 			}
 

@@ -3,6 +3,9 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"go-metric-svc/internal/entities/agent"
@@ -82,7 +85,7 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 	return nil
 }
 
-func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
+func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string, useHash string) error {
 	url := "http://" + host + "/update/"
 	for k, v := range metricsMap {
 		var metric models.Metrics
@@ -103,6 +106,7 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 			log.Infof("Failed to marshal body %s", url)
 			return err
 		}
+
 		var b bytes.Buffer
 
 		w := gzip.NewWriter(&b)
@@ -122,6 +126,14 @@ func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host
 		if err != nil {
 			log.Infof("Send metric via url %s", url)
 			return err
+		}
+
+		if useHash != "" {
+			h := hmac.New(sha256.New, []byte(useHash))
+			h.Write(resMetrics)
+			hashBytes := h.Sum(nil)
+			hashString := hex.EncodeToString(hashBytes)
+			req.Header.Set("HashSHA256", hashString)
 		}
 
 		req.Header.Set("Content-Encoding", "gzip")
@@ -150,6 +162,7 @@ func doReqWithRetry(req http.Request, log zap.SugaredLogger) error {
 	for i := 1; i < 6; i += 2 {
 		client := &http.Client{}
 		resp, err := client.Do(&req)
+
 		if resp != nil && isRetryableStatusCode(resp.StatusCode) {
 			continue
 		}

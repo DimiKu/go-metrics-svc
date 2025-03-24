@@ -37,7 +37,7 @@ func main() {
 	r := chi.NewRouter()
 	parseFlags()
 
-	addr, saveInterval, filePathToStoreMetrics, connString = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString)
+	addr, saveInterval, filePathToStoreMetrics, connString, useHash = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString, useHash)
 
 	ctx := context.Background()
 
@@ -98,8 +98,8 @@ func main() {
 	r.Use(gzipper.GzipMiddleware(log))
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
-	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx))
-	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx, useHash))
+	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx, useHash))
 	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
 	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
 	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))

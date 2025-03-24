@@ -31,7 +31,7 @@ func TestGzipCompression(t *testing.T) {
 
 	mockService.EXPECT().SumInStorage(lowerCaseMetricName, *mockMetric.Delta, ctx).AnyTimes().Return(mockValue, nil)
 
-	handler := http.HandlerFunc(handlers.MetricJSONCollectHandler(mockService, s, ctx))
+	handler := http.HandlerFunc(handlers.MetricJSONCollectHandler(mockService, s, ctx, ""))
 	gzipHandler := GzipMiddleware(s)(handler)
 	srv := httptest.NewServer(gzipHandler)
 	defer srv.Close()
