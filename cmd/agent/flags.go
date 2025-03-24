@@ -7,6 +7,7 @@ var (
 	poolInterval string
 	sendInterval string
 	useHash      string
+	workerCount  int
 )
 
 func parseFlags() {
@@ -14,6 +15,7 @@ func parseFlags() {
 	flag.StringVar(&poolInterval, "p", "2", "interval for pool metrics")
 	flag.StringVar(&sendInterval, "r", "10", "interval for send metrics")
 	flag.StringVar(&useHash, "k", "", "use hash")
+	flag.IntVar(&workerCount, "l", 5, "rate limit")
 
 	flag.Parse()
 }
