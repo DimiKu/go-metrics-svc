@@ -129,6 +129,11 @@ func main() {
 		}
 	}()
 
+	go func() {
+		<-signalChan
+		os.Exit(0)
+	}()
+
 	for {
 		//sugarLog.Info("Agent tick")
 		time.Sleep(1 * time.Second)
