@@ -5,8 +5,11 @@ import (
 	"go-metric-svc/internal/config"
 	agentService "go-metric-svc/internal/service/agent"
 	"go.uber.org/zap"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -21,6 +24,9 @@ func main() {
 		Name  string
 		Value float32
 	}
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	metricChan := make(chan metricTransfer, workerCount)
 	counter := 0
@@ -76,42 +82,50 @@ func main() {
 	defer sendTicker.Stop()
 
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 		for {
-			<-sendTicker.C
+			select {
+			case <-signalChan:
+				return
+			default:
+				<-sendTicker.C
 
-			metricsMapLock.Lock()
-			metrics := metricsMap
-			metricsMapLock.Unlock()
-			sugarLog.Infof("Start send metric in channel")
+				metricsMapLock.Lock()
+				metrics := metricsMap
+				metricsMapLock.Unlock()
+				sugarLog.Infof("Start send metric in channel")
 
-			for k, v := range metrics {
-				metricChan <- metricTransfer{
-					Name:  k,
-					Value: v,
+				for k, v := range metrics {
+					metricChan <- metricTransfer{
+						Name:  k,
+						Value: v,
+					}
+
 				}
-
+				counter = 0
 			}
-			counter = 0
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		for {
-			for i := 0; i <= workerCount; i++ {
-				metric, ok := <-metricChan
-				if !ok {
-					return
-				}
-				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash); err != nil {
-					fmt.Println("Error sending metric:", err)
+			select {
+			case <-signalChan:
+				return
+			default:
+				for i := 0; i <= workerCount; i++ {
+					metric, ok := <-metricChan
+					if !ok {
+						return
+					}
+					if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash); err != nil {
+						fmt.Println("Error sending metric:", err)
+					}
 				}
 			}
-			//
-			//time.Sleep(2)
-			//sugarLog.Infof("Finished send stack metrics")
 		}
 	}()
 
