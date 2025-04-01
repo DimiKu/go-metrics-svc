@@ -86,44 +86,35 @@ func main() {
 	go func() {
 		defer wg.Done()
 		for {
-			select {
-			case <-signalChan:
-				return
-			default:
-				<-sendTicker.C
+			<-sendTicker.C
 
-				metricsMapLock.Lock()
-				metrics := metricsMap
-				metricsMapLock.Unlock()
-				sugarLog.Infof("Start send metric in channel")
+			metricsMapLock.Lock()
+			metrics := metricsMap
+			metricsMapLock.Unlock()
+			sugarLog.Infof("Start send metric in channel")
 
-				for k, v := range metrics {
-					metricChan <- metricTransfer{
-						Name:  k,
-						Value: v,
-					}
-
+			for k, v := range metrics {
+				metricChan <- metricTransfer{
+					Name:  k,
+					Value: v,
 				}
-				counter = 0
+
 			}
+			counter = 0
 		}
+
 	}()
 
 	wg.Add(1)
 	go func() {
 		for {
-			select {
-			case <-signalChan:
-				return
-			default:
-				for i := 0; i <= workerCount; i++ {
-					metric, ok := <-metricChan
-					if !ok {
-						return
-					}
-					if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash); err != nil {
-						fmt.Println("Error sending metric:", err)
-					}
+			for i := 0; i <= workerCount; i++ {
+				metric, ok := <-metricChan
+				if !ok {
+					return
+				}
+				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash); err != nil {
+					fmt.Println("Error sending metric:", err)
 				}
 			}
 		}
