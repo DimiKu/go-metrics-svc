@@ -98,11 +98,9 @@ func main() {
 					Name:  k,
 					Value: v,
 				}
-
 			}
 			counter = 0
 		}
-
 	}()
 
 	wg.Add(1)

@@ -74,8 +74,8 @@ func ExtraMetricsWorker(metricsMap map[string]float32) map[string]float32 {
 
 	vmStat, err := mem.VirtualMemory()
 	if err == nil {
-		totalMemory = float32(vmStat.Free)
-		freeMemory = float32(vmStat.Total)
+		freeMemory = float32(vmStat.Free)
+		totalMemory = float32(vmStat.Total)
 	}
 
 	cpuStats, err := cpu.Percent(0, false)
