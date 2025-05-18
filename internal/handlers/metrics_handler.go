@@ -3,6 +3,9 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -178,7 +181,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger, ctx conte
 	}
 }
 
-func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
+func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context, useHash string) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
 		var buf bytes.Buffer
@@ -187,6 +190,18 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx conte
 		if err != nil {
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
+		}
+
+		if useHash != "" && r.Header.Get("HashSHA256") != "" {
+			h := hmac.New(sha256.New, []byte(useHash))
+			h.Write(buf.Bytes())
+			hashBytes := h.Sum(nil)
+			hashString := hex.EncodeToString(hashBytes)
+			byteHash := []byte(r.Header.Get("HashSHA256"))
+			if !(bytes.Equal(byteHash, []byte(hashString))) {
+				http.Error(rw, customerrors.ErrHashMissMatch.Error(), http.StatusBadRequest)
+				return
+			}
 		}
 
 		err = json.Unmarshal(buf.Bytes(), &metric)
@@ -215,7 +230,10 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx conte
 			if metric.Value == nil {
 				return
 			}
-			service.UpdateStorage(metric.ID, *metric.Value, ctx)
+			if err := service.UpdateStorage(metric.ID, *metric.Value, ctx); err != nil {
+				http.Error(rw, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			utils.MakeMetricResponse(rw, metric)
 			return
 		}
@@ -223,7 +241,7 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx conte
 	}
 }
 
-func MetricJSONArrayCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
+func MetricJSONArrayCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context, useHash string) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
 		var metrics []models.Metrics
@@ -242,6 +260,18 @@ func MetricJSONArrayCollectHandler(service Service, log *zap.SugaredLogger, ctx 
 			log.Infof("error with body %s", buf.Bytes())
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
+		}
+
+		if useHash != "" {
+			h := hmac.New(sha256.New, []byte(useHash))
+			h.Write(buf.Bytes())
+			hashBytes := h.Sum(nil)
+			hashString := hex.EncodeToString(hashBytes)
+			byteHash := []byte(r.Header.Get("HashSHA256"))
+			if !(bytes.Equal(byteHash, []byte(hashString))) {
+				http.Error(rw, customerrors.ErrHashMissMatch.Error(), http.StatusBadRequest)
+				return
+			}
 		}
 
 		serviceMetrics := make([]dto.MetricServiceDto, len(metrics))

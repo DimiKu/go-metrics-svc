@@ -9,6 +9,8 @@ type AgentConfig struct {
 	Addr           string `env:"ADDRESS"`
 	ReportInterval string `env:"REPORT_INTERVAL"`
 	PollInterval   string `env:"POLL_INTERVAL"`
+	UseHash        string `env:"KEY"`
+	WorkerCount    int    `env:"RATE_LIMIT"`
 }
 
 func ValidateAgentConfig(
@@ -16,7 +18,9 @@ func ValidateAgentConfig(
 	flagRunAddr string,
 	poolInterval string,
 	sendInterval string,
-) (string, string, string) {
+	useHash string,
+	rateLimit int,
+) (string, string, string, string, int) {
 	err := env.Parse(&cfg)
 	if err != nil {
 		log.Fatalf("Error parse env: %s", err)
@@ -34,5 +38,13 @@ func ValidateAgentConfig(
 		sendInterval = cfg.ReportInterval
 	}
 
-	return poolInterval, sendInterval, flagRunAddr
+	if cfg.UseHash != "" {
+		useHash = cfg.UseHash
+	}
+
+	if cfg.WorkerCount != 0 {
+		rateLimit = cfg.WorkerCount
+	}
+
+	return poolInterval, sendInterval, flagRunAddr, useHash, rateLimit
 }

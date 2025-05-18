@@ -3,8 +3,13 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"go-metric-svc/internal/entities/agent"
 	"go-metric-svc/internal/models"
 	"go.uber.org/zap"
@@ -25,7 +30,7 @@ func collectMetrics(counter *int) map[string]float32 {
 		"Alloc":         float32(memStats.Alloc),
 		"BuckHashSys":   float32(memStats.BuckHashSys),
 		"Frees":         float32(memStats.Frees),
-		"GCCPUFraction": float32(memStats.GCCPUFraction), // Приведение к float32
+		"GCCPUFraction": float32(memStats.GCCPUFraction),
 		"GCSys":         float32(memStats.GCSys),
 		"HeapAlloc":     float32(memStats.HeapAlloc),
 		"HeapIdle":      float32(memStats.HeapIdle),
@@ -55,10 +60,34 @@ func collectMetrics(counter *int) map[string]float32 {
 	return metricsMap
 }
 
-func PoolMetricsWorker(ch chan map[string]float32, counter *int) map[string]float32 {
+func PoolMetricsWorker(counter *int) map[string]float32 {
 	metrics := collectMetrics(counter)
 	return metrics
-	//ch <- metrics
+}
+
+func ExtraMetricsWorker(metricsMap map[string]float32) map[string]float32 {
+	var (
+		totalMemory     float32
+		freeMemory      float32
+		cpuUtilization1 float32
+	)
+
+	vmStat, err := mem.VirtualMemory()
+	if err == nil {
+		freeMemory = float32(vmStat.Free)
+		totalMemory = float32(vmStat.Total)
+	}
+
+	cpuStats, err := cpu.Percent(0, false)
+	if err == nil && len(cpuStats) > 0 {
+		cpuUtilization1 = float32(cpuStats[0])
+	}
+
+	metricsMap["TotalMemory"] = totalMemory
+	metricsMap["FreeMemory"] = freeMemory
+	metricsMap["CPUutilization1"] = cpuUtilization1
+
+	return metricsMap
 }
 
 func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
@@ -82,65 +111,63 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 	return nil
 }
 
-func SendJSONMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
+func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogger, host string, useHash string) error {
 	url := "http://" + host + "/update/"
-	for k, v := range metricsMap {
-		var metric models.Metrics
-		if k == agent.CounterMetricName {
-			metric.ID = k
-			metric.MType = agent.CounterMetricType
-			value := int64(v)
-			metric.Delta = &value
-		} else {
-			metric.ID = k
-			metric.MType = agent.GaugeMetricName
-			value := float64(v)
-			metric.Value = &value
-		}
+	var metric models.Metrics
+	if metricType == agent.CounterMetricName {
+		metric.ID = metricType
+		metric.MType = agent.CounterMetricType
+		value := int64(metricValue)
+		metric.Delta = &value
+	} else {
+		metric.ID = metricType
+		metric.MType = agent.GaugeMetricName
+		value := float64(metricValue)
+		metric.Value = &value
+	}
 
-		resMetrics, err := json.Marshal(metric)
-		if err != nil {
-			log.Infof("Failed to marshal body %s", url)
-			return err
-		}
-		var b bytes.Buffer
+	resMetrics, err := json.Marshal(metric)
+	if err != nil {
+		log.Infof("Failed to marshal body %s", url)
+		return err
+	}
 
-		w := gzip.NewWriter(&b)
-		_, err = w.Write(resMetrics)
-		if err != nil {
-			fmt.Println("Error writing gzip data:", err)
-			return err
-		}
+	var b bytes.Buffer
 
-		err = w.Close()
-		if err != nil {
-			fmt.Println("Error closing gzip writer:", err)
-			return err
-		}
+	w := gzip.NewWriter(&b)
+	_, err = w.Write(resMetrics)
+	if err != nil {
+		fmt.Println("Error writing gzip data:", err)
+		return err
+	}
 
-		req, err := http.NewRequest("POST", url, &b)
-		if err != nil {
-			log.Infof("Send metric via url %s", url)
-			return err
-		}
+	err = w.Close()
+	if err != nil {
+		fmt.Println("Error closing gzip writer:", err)
+		return err
+	}
 
-		req.Header.Set("Content-Encoding", "gzip")
-		req.Header.Set("Content-Type", "application/json")
-		req.ContentLength = int64(b.Len())
+	req, err := http.NewRequest("POST", url, &b)
+	if err != nil {
+		log.Infof("Send metric via url %s", url)
+		return err
+	}
 
-		err = doReqWithRetry(*req, *log)
-		if err != nil {
-			log.Errorf("Error in send metrics: %s", err)
-		}
+	if useHash != "" {
+		h := hmac.New(sha256.New, []byte(useHash))
+		h.Write(resMetrics)
+		hashBytes := h.Sum(nil)
+		hashString := hex.EncodeToString(hashBytes)
+		req.Header.Set("HashSHA256", hashString)
+	}
 
-		// для дебага
-		//body, err := io.ReadAll(resp.Body)
-		//if err != nil {
-		//	fmt.Println("Error reading response:", err)
-		//	return nil
-		//}
-		//fmt.Println("Response Status:", resp.Status)
-		//fmt.Println("Response Body:", string(body))
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Content-Type", "application/json")
+	req.ContentLength = int64(b.Len())
+
+	err = doReqWithRetry(*req, *log)
+	if err != nil {
+		log.Errorf("Error in send metrics: %s", err)
 	}
 
 	return nil
@@ -150,6 +177,7 @@ func doReqWithRetry(req http.Request, log zap.SugaredLogger) error {
 	for i := 1; i < 6; i += 2 {
 		client := &http.Client{}
 		resp, err := client.Do(&req)
+
 		if resp != nil && isRetryableStatusCode(resp.StatusCode) {
 			continue
 		}
