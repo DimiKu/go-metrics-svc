@@ -36,8 +36,6 @@ func NewMetricCollectorSvc(
 }
 
 func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float64, ctx context.Context) error {
-	//s.log.Info("Update in service")
-
 	if err := s.storage.UpdateValue(metricName, metricValue, ctx); err != nil {
 		return err
 	}
