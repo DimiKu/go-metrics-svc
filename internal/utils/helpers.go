@@ -11,15 +11,7 @@ import (
 	"time"
 )
 
-func ArrStringContains(arr []string, str string) bool {
-	for _, v := range arr {
-		if v == str {
-			return true
-		}
-	}
-	return false
-}
-
+// CommitOrRollback ф-я для автматического роллбека при ошибке или коммита при отсутствии ошибки
 func CommitOrRollback(tx pgx.Tx, err error, ctx context.Context) {
 	if err != nil {
 		tx.Rollback(ctx)
@@ -28,6 +20,7 @@ func CommitOrRollback(tx pgx.Tx, err error, ctx context.Context) {
 	}
 }
 
+// ф-я для првоерки ошибков ПГ
 func isRetryable(err error) bool {
 	if pgErr, ok := err.(*pgconn.PgError); ok {
 		switch pgErr.Code {
@@ -38,6 +31,7 @@ func isRetryable(err error) bool {
 	return false
 }
 
+// RetryableQuery ф-я для выполнения запросов на чтение с ретраем
 func RetryableQuery(ctx context.Context, pool *pgxpool.Pool, log *zap.SugaredLogger, query string, args ...interface{}) (pgx.Rows, error) {
 	var row pgx.Rows
 	var err error
@@ -66,6 +60,7 @@ func RetryableQuery(ctx context.Context, pool *pgxpool.Pool, log *zap.SugaredLog
 	return nil, err
 }
 
+// RetryableExec ф-я для выполнения запросов на запись с ретраем
 func RetryableExec(ctx context.Context, pool *pgxpool.Pool, command string, args ...interface{}) (pgconn.CommandTag, error) {
 	var tag pgconn.CommandTag
 	var err error

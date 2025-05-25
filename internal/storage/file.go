@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+// DBStorage Струстура реализующая работу с файлами
+
 type Producer struct {
 	file   *os.File
 	writer *bufio.Writer

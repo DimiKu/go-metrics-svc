@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+// MemStorage структура реализующая сбор метик и их обновление
+
 type MemStorage struct {
 	metricsMap map[string]models.StorageValue
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// StoragePingHandler хендлер для проверки соединения с бд
 func StoragePingHandler(service Service, ctx context.Context, log *zap.SugaredLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		ping, err := service.DBPing(ctx)

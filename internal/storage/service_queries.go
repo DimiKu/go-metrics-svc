@@ -1,5 +1,6 @@
 package storage
 
+// запросы для первичной настройки бд
 var (
 	PingQuery                = "Select 1"
 	CreateGuageMetricTable   = `CREATE TABLE IF NOT EXISTS gauge_metrics (metric_name varchar(255) NOT NULL, metric_value double precision NOT NULL);`

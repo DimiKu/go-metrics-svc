@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// MetricReceiveAllMetricsHandler Хендлер для получения метрик в формате html
 func MetricReceiveAllMetricsHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		type PageData struct {
