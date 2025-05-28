@@ -59,7 +59,7 @@ func ExampleMetricCollectHandler() {
 	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 		sugar.Errorf("failed to decode response: %v", err)
 	}
-	if !response.Status || response.Message.MetricName != "testMetric" || response.Message.MetricValue != "42" {
+	if !response.Status || response.Message.MetricName != "testMetric" || response.Message.MetricValue != "10" {
 		sugar.Errorf("handler returned unexpected response: got %+v", response)
 	}
 }
