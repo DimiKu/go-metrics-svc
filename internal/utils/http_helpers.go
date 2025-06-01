@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// Response структура для формирования ответа
 type Response struct {
 	Status  bool `json:"status"`
 	Message struct {
@@ -16,15 +17,12 @@ type Response struct {
 	} `json:"message"`
 }
 
+// MakeResponse ф-я для записи ответа в http.ResponseWriter
 func MakeResponse(w http.ResponseWriter, response Response) {
-	// TODO gотом узнаешь нужно раскомментить или удалить
-	//jsonRes, err := json.Marshal(response.Message)
-	//if err != nil {
-	//	log.Fatal("can't decode response", zap.Error(err))
-	//}
 	w.Write([]byte(response.Message.MetricValue))
 }
 
+// MakeMetricResponse ф-я для записи ответа типа models.Metrics в http.ResponseWriter
 func MakeMetricResponse(w http.ResponseWriter, metric models.Metrics) {
 	jsonRes, err := json.Marshal(metric)
 	if err != nil {
@@ -33,6 +31,7 @@ func MakeMetricResponse(w http.ResponseWriter, metric models.Metrics) {
 	w.Write(jsonRes)
 }
 
+// MakeMetricsResponse ф-я для записи ответа типа []models.Metrics в http.ResponseWriter
 func MakeMetricsResponse(w http.ResponseWriter, metrics []models.Metrics) {
 	jsonRes, err := json.Marshal(metrics)
 	if err != nil {

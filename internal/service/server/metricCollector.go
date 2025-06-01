@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Storage интерфейс для стораджа
 type Storage interface {
 	UpdateValue(metricName string, metricValue float64, ctx context.Context) error
 	SumValue(metricName string, metricValue int64, ctx context.Context) (int64, error)
@@ -35,8 +36,6 @@ func NewMetricCollectorSvc(
 }
 
 func (s *MetricCollectorSvc) UpdateStorage(metricName string, metricValue float64, ctx context.Context) error {
-	//s.log.Info("Update in service")
-
 	if err := s.storage.UpdateValue(metricName, metricValue, ctx); err != nil {
 		return err
 	}

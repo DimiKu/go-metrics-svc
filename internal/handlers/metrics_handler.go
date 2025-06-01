@@ -19,6 +19,7 @@ import (
 	"strings"
 )
 
+// Service Интерфейс для сервиса
 type Service interface {
 	UpdateStorage(metricName string, num float64, ctx context.Context) error
 	SumInStorage(metricName string, num int64, ctx context.Context) (int64, error)
@@ -37,7 +38,6 @@ func MetricCollectHandler(service Service, log *zap.SugaredLogger, ctx context.C
 		}
 
 		metricType, metricName, metricValue := req[2], req[3], req[4]
-		//lowerCaseMetricName := strings.ToLower(metricName)
 		lowerCaseMetricName := metricName
 		log.Infof("Got req with metricType: %s, metricName: %s, metricValue: %s", metricType, metricName, metricValue)
 		response := utils.Response{
@@ -126,6 +126,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger, ctx context.C
 	}
 }
 
+// MetricReceiveJSONHandler Хендлер для отправки метрик в формате Json
 func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
@@ -181,6 +182,7 @@ func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger, ctx conte
 	}
 }
 
+// MetricJSONCollectHandler Хендлер для получения метрик в формате json
 func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context, useHash string) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
@@ -241,6 +243,7 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx conte
 	}
 }
 
+// MetricJSONArrayCollectHandler Хендлер для отправки массива метрик
 func MetricJSONArrayCollectHandler(service Service, log *zap.SugaredLogger, ctx context.Context, useHash string) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()

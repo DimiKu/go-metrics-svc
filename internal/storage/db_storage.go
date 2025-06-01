@@ -14,6 +14,7 @@ import (
 	"strconv"
 )
 
+// DBStorage Струстура реализующая работу с бд
 type DBStorage struct {
 	conn *pgx.Conn
 	pool *pgxpool.Pool
