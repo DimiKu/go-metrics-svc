@@ -10,12 +10,22 @@ import (
 	"time"
 )
 
+var (
+	// Флаги, которые можно передать при компиляции
+	// пример: go build -ldflags "-X main.buildVersion=1.0"
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
 	var (
 		cfg            config.AgentConfig
 		metricsMapLock sync.Mutex
 		wg             sync.WaitGroup
 	)
+
+	config.GetBuildInfo(buildVersion, buildDate, buildCommit)
 
 	type metricTransfer struct {
 		Name  string

@@ -22,6 +22,14 @@ import (
 	"time"
 )
 
+var (
+	// Флаги, которые можно передать при компиляции
+	// пример: go build -ldflags "-X main.buildVersion=1.0"
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
 	var cfg config.ServerConfig
 
@@ -30,6 +38,8 @@ func main() {
 		saveInterval           string
 		filePathToStoreMetrics string
 	)
+
+	config.GetBuildInfo(buildVersion, buildDate, buildCommit)
 
 	logger, _ := zap.NewProduction()
 	log := logger.Sugar()
