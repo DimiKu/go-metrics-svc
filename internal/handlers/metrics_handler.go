@@ -126,7 +126,7 @@ func MetricReceiveHandler(service Service, log *zap.SugaredLogger, ctx context.C
 	}
 }
 
-// хенлен для получения
+// MetricReceiveJSONHandler Хендлер для отправки метрик в формате Json
 func MetricReceiveJSONHandler(service Service, log *zap.SugaredLogger, ctx context.Context) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var metric models.Metrics
