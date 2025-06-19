@@ -5,12 +5,17 @@ import (
 	"go-metric-svc/internal/config"
 	agentService "go-metric-svc/internal/service/agent"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
+)
+
+var (
+	// Флаги, которые можно передать при компиляции
+	// пример: go build -ldflags "-X main.buildVersion=1.0"
+	buildVersion string
+	buildDate    string
+	buildCommit  string
 )
 
 func main() {
@@ -20,13 +25,12 @@ func main() {
 		wg             sync.WaitGroup
 	)
 
+	config.GetBuildInfo(buildVersion, buildDate, buildCommit)
+
 	type metricTransfer struct {
 		Name  string
 		Value float32
 	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	metricChan := make(chan metricTransfer, workerCount)
 	counter := 0
@@ -116,11 +120,6 @@ func main() {
 				}
 			}
 		}
-	}()
-
-	go func() {
-		<-signalChan
-		os.Exit(0)
 	}()
 
 	for {

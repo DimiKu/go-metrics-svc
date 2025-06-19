@@ -22,6 +22,14 @@ import (
 	"time"
 )
 
+var (
+	// Флаги, которые можно передать при компиляции
+	// пример: go build -ldflags "-X main.buildVersion=1.0"
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
 	var cfg config.ServerConfig
 
@@ -31,6 +39,8 @@ func main() {
 		filePathToStoreMetrics string
 	)
 
+	config.GetBuildInfo(buildVersion, buildDate, buildCommit)
+
 	logger, _ := zap.NewProduction()
 	log := logger.Sugar()
 
@@ -39,7 +49,11 @@ func main() {
 
 	addr, saveInterval, filePathToStoreMetrics, connString, useHash = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString, useHash)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	// TODO обсудить. Не понял
+	ctx, finish := context.WithTimeout(ctx, 2)
+
+	defer cancel()
 
 	collectorService, initialStorage, pool, conn := configureCollectorServiceAndStorage(connString, needRestore, filePathToStoreMetrics, cfg, ctx, log)
 
@@ -52,6 +66,12 @@ func main() {
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Обсудить. не понял
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
 
 	if initialStorage != nil {
 		go func() {
@@ -79,8 +99,9 @@ func main() {
 			if err := producer.Write(initialStorage); err != nil {
 				log.Errorf("Failed to write data: %s", err)
 			}
-
-			os.Exit(0)
+			if err := srv.Shutdown(ctx); err != nil {
+				log.Infof("Failed in gracefull shutdown")
+			}
 		}()
 	} else {
 		go func() {
@@ -89,8 +110,11 @@ func main() {
 
 			conn.Close(ctx)
 			pool.Close()
+			finish()
 
-			os.Exit(0)
+			if err := srv.Shutdown(ctx); err != nil {
+				log.Infof("Failed in gracefull shutdown")
+			}
 		}()
 	}
 
@@ -106,7 +130,9 @@ func main() {
 
 	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log, ctx))
 	log.Infof("Server start on %s", addr)
-	err = http.ListenAndServe(addr, r)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		panic(err)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -131,13 +157,13 @@ func configureCollectorServiceAndStorage(
 		conn, err := pgx.Connect(ctx, connString)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-			os.Exit(1)
+			panic(err)
 		}
 
 		DBConfig, err := pgxpool.ParseConfig(connString)
 		if err != nil {
 			log.Fatalf("Unable to parse database URL: %v\n", err)
-			os.Exit(1)
+			panic(err)
 		}
 
 		DBConfig.MaxConns = 300
