@@ -48,12 +48,11 @@ func main() {
 	parseFlags()
 
 	addr, saveInterval, filePathToStoreMetrics, connString, useHash = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString, useHash)
-	srv := &http.Server{
-		Addr:    addr,
-		Handler: r,
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	// TODO обсудить. Не понял
+	ctx, finish := context.WithTimeout(ctx, 2)
+
 	defer cancel()
 
 	collectorService, initialStorage, pool, conn := configureCollectorServiceAndStorage(connString, needRestore, filePathToStoreMetrics, cfg, ctx, log)
@@ -67,6 +66,12 @@ func main() {
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Обсудить. не понял
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
 
 	if initialStorage != nil {
 		go func() {
@@ -105,6 +110,7 @@ func main() {
 
 			conn.Close(ctx)
 			pool.Close()
+			finish()
 
 			if err := srv.Shutdown(ctx); err != nil {
 				log.Infof("Failed in gracefull shutdown")

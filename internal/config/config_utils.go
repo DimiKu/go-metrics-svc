@@ -3,22 +3,20 @@ package config
 import "fmt"
 
 // GetBuildInfo ф-я выводит в STDOUT информацию о билде сборки
-func GetBuildInfo(version string, date string, commit string) {
-	if version == "" {
-		version = "N/A"
+func GetBuildInfo(version, date, commit string) {
+	values := []struct {
+		name  string
+		value string
+	}{
+		{"Build version", version},
+		{"Build date", date},
+		{"Build commit", commit},
 	}
 
-	if date == "" {
-		date = "N/A"
+	for _, v := range values {
+		if v.value == "" {
+			v.value = "N/A"
+		}
+		fmt.Printf("%s: %s\n", v.name, v.value)
 	}
-
-	if commit == "" {
-		commit = "N/A"
-	}
-
-	fmt.Printf(
-		"Build version: %s \n"+
-			"buildDate: %s \n"+
-			"buildCommi: %s \n",
-		version, date, commit)
 }
