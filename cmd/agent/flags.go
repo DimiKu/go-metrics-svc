@@ -8,6 +8,7 @@ var (
 	sendInterval string
 	useHash      string
 	workerCount  int
+	useCrypto    string
 )
 
 func parseFlags() {
@@ -16,6 +17,7 @@ func parseFlags() {
 	flag.StringVar(&sendInterval, "r", "10", "interval for send metrics")
 	flag.StringVar(&useHash, "k", "", "use hash")
 	flag.IntVar(&workerCount, "l", 5, "rate limit")
+	flag.StringVar(&useCrypto, "c", "", "use crypto")
 
 	flag.Parse()
 }

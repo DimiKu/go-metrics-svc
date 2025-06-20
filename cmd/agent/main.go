@@ -40,7 +40,7 @@ func main() {
 	logger, _ := zap.NewProduction()
 	sugarLog := logger.Sugar()
 
-	poolInterval, sendInterval, flagRunAddr, useHash, workerCount = config.ValidateAgentConfig(cfg, flagRunAddr, poolInterval, sendInterval, useHash, workerCount)
+	poolInterval, sendInterval, flagRunAddr, useHash, workerCount, useCrypto = config.ValidateAgentConfig(cfg, flagRunAddr, poolInterval, sendInterval, useHash, workerCount, useCrypto)
 
 	sugarLog.Infof("Pool intervar is %s", poolInterval)
 	poolDurationInterval, err := strconv.Atoi(poolInterval)
@@ -115,7 +115,8 @@ func main() {
 				if !ok {
 					return
 				}
-				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash); err != nil {
+				sugarLog.Infof("Start send metric")
+				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash, useCrypto); err != nil {
 					fmt.Println("Error sending metric:", err)
 				}
 			}
@@ -123,7 +124,7 @@ func main() {
 	}()
 
 	for {
-		//sugarLog.Info("Agent tick")
+		sugarLog.Info("Agent tick")
 		time.Sleep(1 * time.Second)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"go-metric-svc/internal/entities/agent"
 	"go-metric-svc/internal/models"
+	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"math/rand"
 	"net/http"
@@ -93,7 +94,7 @@ func ExtraMetricsWorker(metricsMap map[string]float32) map[string]float32 {
 func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host string) error {
 	var url string
 	log.Info("start send metrics")
-	hostWithSchema := "http://" + host
+	hostWithSchema := "https://" + host
 	for k, v := range metricsMap {
 		if k == agent.CounterMetricName {
 			url = fmt.Sprintf("%s/update/%s/%s/%d", hostWithSchema, "counter", k, int64(v))
@@ -111,9 +112,11 @@ func SendMetrics(metricsMap map[string]float32, log *zap.SugaredLogger, host str
 	return nil
 }
 
-func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogger, host string, useHash string) error {
-	url := "http://" + host + "/update/"
+func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogger, host string, useHash string, useCrypto string) error {
+	shema := "http://"
 	var metric models.Metrics
+	var b bytes.Buffer
+
 	if metricType == agent.CounterMetricName {
 		metric.ID = metricType
 		metric.MType = agent.CounterMetricType
@@ -128,18 +131,27 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 
 	resMetrics, err := json.Marshal(metric)
 	if err != nil {
-		log.Infof("Failed to marshal body %s", url)
+		log.Infof("Failed to marshal body")
 		return err
 	}
 
-	var b bytes.Buffer
-
 	w := gzip.NewWriter(&b)
+
+	if useCrypto != "" {
+		data, err := utils.EncryptWithCert(useCrypto, resMetrics)
+		if err != nil {
+			log.Infof("Failed to encrypt data")
+		}
+		w.Write(data)
+	}
+
 	_, err = w.Write(resMetrics)
 	if err != nil {
 		fmt.Println("Error writing gzip data:", err)
 		return err
 	}
+
+	url := shema + host + "/update/"
 
 	err = w.Close()
 	if err != nil {
@@ -165,6 +177,7 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 	req.Header.Set("Content-Type", "application/json")
 	req.ContentLength = int64(b.Len())
 
+	log.Infof("Do req: %s", req.Body)
 	err = doReqWithRetry(*req, *log)
 	if err != nil {
 		log.Errorf("Error in send metrics: %s", err)

@@ -8,11 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go-metric-svc/internal/config"
 	"go-metric-svc/internal/handlers"
+	"go-metric-svc/internal/middlewares/decrypt"
 	"go-metric-svc/internal/middlewares/gzipper"
 	customLog "go-metric-svc/internal/middlewares/logger"
 	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
+	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -47,11 +49,11 @@ func main() {
 	r := chi.NewRouter()
 	parseFlags()
 
-	addr, saveInterval, filePathToStoreMetrics, connString, useHash = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString, useHash)
+	addr, saveInterval, filePathToStoreMetrics, connString, useHash, useCrypto = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString, useHash, useCrypto)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	// TODO обсудить. Не понял
-	ctx, finish := context.WithTimeout(ctx, 2)
+	//ctx, finish := context.WithTimeout(ctx, 2)
 
 	defer cancel()
 
@@ -67,9 +69,28 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Обсудить. не понял
+	r.Use(customLog.LogMiddleware(log))
+	r.Use(gzipper.GzipMiddleware(log))
+	if useCrypto != "" {
+		key, err := utils.LoadPrivateKey(useCrypto)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+
+		r.Use(decrypt.DecryptMiddleware(key))
+	}
+
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx, useHash))
+	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx, useHash))
+	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
+	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
+	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
+
+	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log, ctx))
+
 	srv := &http.Server{
-		Addr:    addr,
+		Addr:    ":8080",
 		Handler: r,
 	}
 
@@ -110,7 +131,7 @@ func main() {
 
 			conn.Close(ctx)
 			pool.Close()
-			finish()
+			//finish()
 
 			if err := srv.Shutdown(ctx); err != nil {
 				log.Infof("Failed in gracefull shutdown")
@@ -118,24 +139,12 @@ func main() {
 		}()
 	}
 
-	r.Use(customLog.LogMiddleware(log))
-	r.Use(gzipper.GzipMiddleware(log))
-
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
-	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx, useHash))
-	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx, useHash))
-	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
-	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
-	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
-
-	r.Get("/", handlers.MetricReceiveAllMetricsHandler(collectorService, log, ctx))
 	log.Infof("Server start on %s", addr)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		panic(err)
-	}
+	err = srv.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
+
 }
 
 func configureCollectorServiceAndStorage(

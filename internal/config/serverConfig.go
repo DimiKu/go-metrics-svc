@@ -12,6 +12,7 @@ type ServerConfig struct {
 	StorageInterval string `env:"STORE_INTERVAL"`
 	ConnString      string `env:"DATABASE_DSN"`
 	UseHash         string `env:"KEY"`
+	UseCrypto       string `env:"CRYPTO_KEY"`
 }
 
 func ValidateServerConfig(
@@ -21,9 +22,10 @@ func ValidateServerConfig(
 	fileStoragePath string,
 	connectionString string,
 	useHash string,
-) (string, string, string, string, string) {
+	useCrypto string,
+) (string, string, string, string, string, string) {
 	var addr, saveInterval, filePathToStoreMetrics, connString string
-	var uHash string
+	var uHash, uCrypto string
 
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -60,5 +62,11 @@ func ValidateServerConfig(
 		uHash = useHash
 	}
 
-	return addr, saveInterval, filePathToStoreMetrics, connString, uHash
+	if cfg.UseCrypto != "" {
+		uCrypto = cfg.UseCrypto
+	} else {
+		uCrypto = useCrypto
+	}
+
+	return addr, saveInterval, filePathToStoreMetrics, connString, uHash, uCrypto
 }
