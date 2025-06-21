@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"go-metric-svc/internal/models"
 	"go.uber.org/zap"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -73,7 +72,7 @@ func LoadPrivateKey(path string) (*rsa.PrivateKey, error) {
 }
 
 func EncryptWithCert(certPath string, data []byte) ([]byte, error) {
-	certData, err := ioutil.ReadFile(certPath)
+	certData, err := os.ReadFile(certPath)
 	if err != nil {
 		return nil, err
 	}
