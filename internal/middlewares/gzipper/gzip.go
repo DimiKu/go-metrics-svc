@@ -2,7 +2,6 @@ package gzipper
 
 import (
 	"compress/gzip"
-	"fmt"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -96,7 +95,6 @@ func GzipMiddleware(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 			// проверяем, что клиент отправил серверу сжатые данные в формате gzip
 			contentEncoding := r.Header.Get("Content-Encoding")
 			sendsGzip := strings.Contains(contentEncoding, "gzip")
-			fmt.Println(r.Body)
 			if sendsGzip {
 				// оборачиваем тело запроса в io.Reader с поддержкой декомпрессии
 				cr, err := newCompressReader(r.Body)

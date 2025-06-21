@@ -24,6 +24,7 @@ func TestSendJSONMetric(t *testing.T) {
 		log         *zap.SugaredLogger
 		host        string
 		useHash     string
+		useCrypto   string
 	}
 	tests := []struct {
 		name    string
@@ -38,6 +39,7 @@ func TestSendJSONMetric(t *testing.T) {
 				log:         logger,
 				host:        "localhost",
 				useHash:     "false",
+				useCrypto:   "false",
 			},
 		},
 	}
@@ -70,7 +72,7 @@ func TestSendJSONMetric(t *testing.T) {
 				w.Write(jsonRes)
 			}))
 
-			if err := SendJSONMetric(tt.args.metricType, tt.args.metricValue, tt.args.log, strings.Replace(server.URL, "http://", "", -1), tt.args.useHash); (err != nil) != tt.wantErr {
+			if err := SendJSONMetric(tt.args.metricType, tt.args.metricValue, tt.args.log, strings.Replace(server.URL, "http://", "", -1), tt.args.useHash, tt.args.useCrypto); (err != nil) != tt.wantErr {
 				t.Errorf("SendJSONMetric() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
