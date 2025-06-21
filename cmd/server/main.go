@@ -35,31 +35,27 @@ var (
 func main() {
 	var cfg config.ServerConfig
 
-	var (
-		addr                   string
-		saveInterval           string
-		filePathToStoreMetrics string
-	)
-
 	config.GetBuildInfo(buildVersion, buildDate, buildCommit)
 
 	logger, _ := zap.NewProduction()
 	log := logger.Sugar()
 
 	r := chi.NewRouter()
-	parseFlags()
+	parseFlagsToStruct()
 
-	addr, saveInterval, filePathToStoreMetrics, connString, useHash, useCrypto = config.ValidateServerConfig(cfg, flagRunAddr, storeInterval, fileStoragePath, connString, useHash, useCrypto)
-
+	serverConf, err := config.ValidateServerConfig(cfg, flags, log)
+	if err != nil {
+		log.Fatal("Failed to validate server config", zap.Error(err))
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	// TODO обсудить. Не понял
 	//ctx, finish := context.WithTimeout(ctx, 2)
 
 	defer cancel()
 
-	collectorService, initialStorage, pool, conn := configureCollectorServiceAndStorage(connString, needRestore, filePathToStoreMetrics, cfg, ctx, log)
+	collectorService, initialStorage, pool, conn := configureCollectorServiceAndStorage(serverConf, ctx, log)
 
-	saveDataInterval, err := strconv.Atoi(saveInterval)
+	saveDataInterval, err := strconv.Atoi(serverConf.StorageInterval)
 	if err != nil {
 		log.Error(err)
 	}
@@ -67,12 +63,13 @@ func main() {
 	storeTicker := time.NewTicker(time.Duration(saveDataInterval) * time.Second)
 
 	signalChan := make(chan os.Signal, 1)
+	idleConnsClosed := make(chan struct{})
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	r.Use(customLog.LogMiddleware(log))
 	r.Use(gzipper.GzipMiddleware(log))
-	if useCrypto != "" {
-		key, err := utils.LoadPrivateKey(useCrypto)
+	if serverConf.UseCrypto != "" {
+		key, err := utils.LoadPrivateKey(serverConf.UseCrypto)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
@@ -81,8 +78,8 @@ func main() {
 	}
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
-	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx, useHash))
-	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx, useHash))
+	r.Post("/update/", handlers.MetricJSONCollectHandler(collectorService, log, ctx, serverConf.UseHash))
+	r.Post("/updates/", handlers.MetricJSONArrayCollectHandler(collectorService, log, ctx, serverConf.UseHash))
 	r.Post("/value/", handlers.MetricReceiveJSONHandler(collectorService, log, ctx))
 	r.Get("/value/{metricType}/{metricName}", handlers.MetricReceiveHandler(collectorService, log, ctx))
 	r.Get("/ping", handlers.StoragePingHandler(collectorService, ctx, log))
@@ -98,7 +95,7 @@ func main() {
 		go func() {
 			for {
 				<-storeTicker.C
-				producer, err := storage.NewProducer(filePathToStoreMetrics, log)
+				producer, err := storage.NewProducer(serverConf.FileStoragePath, log)
 				if err != nil {
 					log.Errorf("Failed to create producer: %s", err)
 				}
@@ -112,7 +109,7 @@ func main() {
 		go func() {
 			<-signalChan
 			log.Infof("Start gracefull shutdown")
-			producer, err := storage.NewProducer(filePathToStoreMetrics, log)
+			producer, err := storage.NewProducer(serverConf.FileStoragePath, log)
 			if err != nil {
 				log.Errorf("Failed to create producer: %s", err)
 			}
@@ -123,6 +120,7 @@ func main() {
 			if err := srv.Shutdown(ctx); err != nil {
 				log.Infof("Failed in gracefull shutdown")
 			}
+			close(idleConnsClosed)
 		}()
 	} else {
 		go func() {
@@ -136,21 +134,21 @@ func main() {
 			if err := srv.Shutdown(ctx); err != nil {
 				log.Infof("Failed in gracefull shutdown")
 			}
+
+			close(idleConnsClosed)
 		}()
 	}
 
-	log.Infof("Server start on %s", addr)
-	err = srv.ListenAndServe()
-	if err != nil {
-		panic(err)
+	log.Infof("Server start on %s", serverConf.Addr)
+	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Errorf("Failed to start server: %s", err)
 	}
 
+	<-idleConnsClosed
+	fmt.Println("Server Shutdown gracefully")
 }
 
 func configureCollectorServiceAndStorage(
-	connString string,
-	needRestore bool,
-	filePathToStoreMetrics string,
 	cfg config.ServerConfig,
 	ctx context.Context,
 	log *zap.SugaredLogger,
@@ -161,15 +159,15 @@ func configureCollectorServiceAndStorage(
 	*pgx.Conn,
 ) {
 	var collectorService *server.MetricCollectorSvc
-	if connString != "" {
-		fmt.Println(connString)
-		conn, err := pgx.Connect(ctx, connString)
+	if cfg.ConnString != "" {
+		fmt.Println(cfg.ConnString)
+		conn, err := pgx.Connect(ctx, cfg.ConnString)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 			panic(err)
 		}
 
-		DBConfig, err := pgxpool.ParseConfig(connString)
+		DBConfig, err := pgxpool.ParseConfig(cfg.ConnString)
 		if err != nil {
 			log.Fatalf("Unable to parse database URL: %v\n", err)
 			panic(err)
@@ -189,8 +187,8 @@ func configureCollectorServiceAndStorage(
 		initialStorage := make(map[string]models.StorageValue)
 		memStorage := storage.NewMemStorage(initialStorage, log)
 		collectorService = server.NewMetricCollectorSvc(memStorage, log)
-		if cfg.NeedRestore || needRestore {
-			consumer, err := storage.NewConsumer(filePathToStoreMetrics, log)
+		if cfg.NeedRestore {
+			consumer, err := storage.NewConsumer(cfg.FileStoragePath, log)
 			if err != nil {
 				log.Errorf("Failed to create consumer: %s", err)
 			}
