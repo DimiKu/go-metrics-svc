@@ -1,21 +1,23 @@
 package main
 
-import (
-	"flag"
-	"go-metric-svc/internal/config"
-)
+import "flag"
 
-var flags config.ServerFlagConfig
+var flagRunAddr string
+var storeInterval string
+var fileStoragePath string
+var needRestore bool
+var useHash string
+var connString string
+var useCrypto string
 
-func parseFlagsToStruct() {
-	flag.StringVar(&flags.FlagRunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&flags.StoreInterval, "i", "300", "interval for save data on disc")
-	flag.StringVar(&flags.FileStoragePath, "f", "/tmp/metrics-db.json", "path to local storage")
-	flag.StringVar(&flags.ConnString, "d", "", "String with conn params for connect to db")
-	flag.BoolVar(&flags.NeedRestore, "r", true, "path to local storage")
-	flag.StringVar(&flags.UseHash, "k", "", "use hash")
-	flag.StringVar(&flags.UseCrypto, "crypto-key", "", "use ssl key")
-	flag.StringVar(&flags.ConfigPath, "c", "", "use config")
+func parseFlags() {
+	flag.StringVar(&flagRunAddr, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&storeInterval, "i", "300", "interval for save data on disc")
+	flag.StringVar(&fileStoragePath, "f", "/tmp/metrics-db.json", "path to local storage")
+	flag.StringVar(&connString, "d", "", "String with conn params for connect to db")
+	flag.BoolVar(&needRestore, "r", true, "path to local storage")
+	flag.StringVar(&useHash, "k", "", "use hash")
+	flag.StringVar(&useCrypto, "c", "", "use ssl key")
 
 	flag.Parse()
 }

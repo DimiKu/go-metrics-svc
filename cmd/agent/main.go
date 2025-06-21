@@ -32,29 +32,29 @@ func main() {
 		Value float32
 	}
 
-	logger, _ := zap.NewProduction()
-	sugarLog := logger.Sugar()
-
-	parseFlags()
-	cfg = config.ValidateAgentConfig(cfg, flags, sugarLog)
-
-	metricChan := make(chan metricTransfer, cfg.WorkerCount)
+	metricChan := make(chan metricTransfer, workerCount)
 	counter := 0
 	metricsMap := make(map[string]float32)
 
-	sugarLog.Infof("Pool intervar is %s", cfg.PollInterval)
-	poolDurationInterval, err := strconv.Atoi(cfg.PollInterval)
+	parseFlags()
+	logger, _ := zap.NewProduction()
+	sugarLog := logger.Sugar()
+
+	poolInterval, sendInterval, flagRunAddr, useHash, workerCount, useCrypto = config.ValidateAgentConfig(cfg, flagRunAddr, poolInterval, sendInterval, useHash, workerCount, useCrypto)
+
+	sugarLog.Infof("Pool intervar is %s", poolInterval)
+	poolDurationInterval, err := strconv.Atoi(poolInterval)
 	if err != nil {
 		sugarLog.Error(err)
 	}
 
-	sugarLog.Infof("Send intervar is %s", cfg.ReportInterval)
-	sendDurationInterval, err := strconv.Atoi(cfg.ReportInterval)
+	sugarLog.Infof("Send intervar is %s", sendInterval)
+	sendDurationInterval, err := strconv.Atoi(sendInterval)
 	if err != nil {
 		sugarLog.Error(err)
 	}
 
-	sugarLog.Infof("Start sending messages to %s", cfg.Addr)
+	sugarLog.Infof("Start sending messages to %s", flagRunAddr)
 
 	poolTicker := time.NewTicker(time.Duration(poolDurationInterval) * time.Second)
 
@@ -110,13 +110,13 @@ func main() {
 	wg.Add(1)
 	go func() {
 		for {
-			for i := 0; i <= cfg.WorkerCount; i++ {
+			for i := 0; i <= workerCount; i++ {
 				metric, ok := <-metricChan
 				if !ok {
 					return
 				}
 				sugarLog.Infof("Start send metric")
-				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, cfg.Addr, cfg.UseHash, cfg.UseCrypto); err != nil {
+				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, flagRunAddr, useHash, useCrypto); err != nil {
 					fmt.Println("Error sending metric:", err)
 				}
 			}
