@@ -135,6 +135,7 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 		return err
 	}
 
+	// TODO не понял почему пишу два раза. Надо обсудить
 	w := gzip.NewWriter(&b)
 
 	if useCrypto != "" {

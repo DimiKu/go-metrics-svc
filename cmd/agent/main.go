@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"go-metric-svc/internal/config"
 	agentService "go-metric-svc/internal/service/agent"
 	"go.uber.org/zap"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -38,6 +42,12 @@ func main() {
 	parseFlags()
 	cfg = config.ValidateAgentConfig(cfg, flags, sugarLog)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
 	metricChan := make(chan metricTransfer, cfg.WorkerCount)
 	counter := 0
 	metricsMap := make(map[string]float32)
@@ -62,11 +72,17 @@ func main() {
 	go func() {
 		defer wg.Done()
 		for {
-			<-poolTicker.C
-			metricsMapLock.Lock()
-			counter += 1
-			metricsMap = agentService.PoolMetricsWorker(&counter)
-			metricsMapLock.Unlock()
+			select {
+			case <-ctx.Done():
+				fmt.Println("Shutting down pool goroutines")
+				return
+			default:
+				<-poolTicker.C
+				metricsMapLock.Lock()
+				counter += 1
+				metricsMap = agentService.PoolMetricsWorker(&counter)
+				metricsMapLock.Unlock()
+			}
 		}
 	}()
 
@@ -74,11 +90,17 @@ func main() {
 	go func() {
 		defer wg.Done()
 		for {
-			<-poolTicker.C
-			metricsMapLock.Lock()
-			counter += 1
-			metricsMap = agentService.ExtraMetricsWorker(metricsMap)
-			metricsMapLock.Unlock()
+			select {
+			case <-ctx.Done():
+				fmt.Println("Shutting down extra worker goroutines")
+				return
+			default:
+				<-poolTicker.C
+				metricsMapLock.Lock()
+				counter += 1
+				metricsMap = agentService.ExtraMetricsWorker(metricsMap)
+				metricsMapLock.Unlock()
+			}
 		}
 	}()
 
@@ -86,45 +108,70 @@ func main() {
 	defer sendTicker.Stop()
 
 	wg.Add(1)
-
 	go func() {
 		defer wg.Done()
 		for {
-			<-sendTicker.C
+			select {
+			case <-ctx.Done():
+				fmt.Println("Shutting down collect metric in channel goroutines")
+				return
+			default:
+				<-sendTicker.C
+				metricsMapLock.Lock()
+				metrics := metricsMap
+				metricsMapLock.Unlock()
+				sugarLog.Infof("Start collect metric in channel")
 
-			metricsMapLock.Lock()
-			metrics := metricsMap
-			metricsMapLock.Unlock()
-			sugarLog.Infof("Start send metric in channel")
-
-			for k, v := range metrics {
-				metricChan <- metricTransfer{
-					Name:  k,
-					Value: v,
+				for k, v := range metrics {
+					metricChan <- metricTransfer{
+						Name:  k,
+						Value: v,
+					}
 				}
+				counter = 0
+				sendTicker.Reset(time.Duration(sendDurationInterval) * time.Second)
 			}
-			counter = 0
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
-			for i := 0; i <= cfg.WorkerCount; i++ {
-				metric, ok := <-metricChan
-				if !ok {
-					return
-				}
-				sugarLog.Infof("Start send metric")
-				if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, cfg.Addr, cfg.UseHash, cfg.UseCrypto); err != nil {
-					fmt.Println("Error sending metric:", err)
+			select {
+			case <-ctx.Done():
+				fmt.Println("Shutting down send goroutines")
+				return
+			default:
+				for i := 0; i <= cfg.WorkerCount; i++ {
+					metric, ok := <-metricChan
+					if !ok {
+						return
+					}
+					sugarLog.Infof("Start send metric")
+					if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, cfg.Addr, cfg.UseHash, cfg.UseCrypto); err != nil {
+						fmt.Println("Error sending metric:", err)
+					}
 				}
 			}
 		}
 	}()
 
+	<-signalChan
+	fmt.Println("Agent start graceful Shutdown")
+	cancel()
+
+	// TODO тут должен быть wg.Wait() но не получается. что-то блокируется. Надо обсудить
+	fmt.Println("Agent Shutdown gracefully")
+
 	for {
-		sugarLog.Info("Agent tick")
-		time.Sleep(1 * time.Second)
+		select {
+		case <-ctx.Done():
+			fmt.Println("Shutting down send goroutines")
+			return
+		default:
+			sugarLog.Info("Agent tick")
+			time.Sleep(1 * time.Second)
+		}
 	}
 }
