@@ -17,6 +17,7 @@ import (
 	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"math/rand"
 	"net/http"
@@ -198,7 +199,7 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 }
 
 func SendMetricViaGrpc(metricType string, metricValue float32, host string) error {
-	conn, err := grpc.Dial(host, grpc.WithInsecure())
+	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -216,7 +217,6 @@ func sendGRPCMetric(client proto.MetricsServiceClient, metricID string, metricVa
 	req := &proto.MetricRequest{
 		Id: metricID,
 	}
-
 	if metricID == agent.CounterMetricName {
 		req.Type = agent.CounterMetricName
 		req.Value = &proto.MetricRequest_Delta{Delta: int64(metricValue)}
