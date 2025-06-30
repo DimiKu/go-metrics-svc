@@ -176,9 +176,15 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Content-Type", "application/json")
+	ipAddr, err := utils.GetMyIP()
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-Real-IP", ipAddr)
+	log.Infof("Sending metric with real-ip %s", ipAddr)
 	req.ContentLength = int64(b.Len())
 
-	log.Infof("Do req: %s", req.Body)
+	log.Infof("Do req: %s", resMetrics)
 	err = doReqWithRetry(*req, *log)
 	if err != nil {
 		log.Errorf("Error in send metrics: %s", err)

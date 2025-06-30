@@ -23,6 +23,7 @@ type ServerFlagConfig struct {
 	ConnString      string
 	UseCrypto       string
 	ConfigPath      string
+	TrustedSubnet   string
 }
 
 type ServerConfig struct {
@@ -34,6 +35,7 @@ type ServerConfig struct {
 	UseHash         string `env:"KEY"`
 	UseCrypto       string `env:"CRYPTO_KEY"`
 	ConfigPath      string `env:"CONFIG"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET"`
 }
 
 func ValidateServerConfig(cfg ServerConfig, flagCfg ServerFlagConfig, log *zap.SugaredLogger) (ServerConfig, error) {
@@ -66,6 +68,10 @@ func ValidateServerConfig(cfg ServerConfig, flagCfg ServerFlagConfig, log *zap.S
 		cfg.UseCrypto = flagCfg.UseCrypto
 	}
 
+	if cfg.TrustedSubnet == "" {
+		cfg.TrustedSubnet = flagCfg.TrustedSubnet
+	}
+
 	if cfg.ConfigPath != "" || flagCfg.ConfigPath != "" {
 		if cfg.ConfigPath == "" && flagCfg.ConfigPath != "" {
 			cfg.ConfigPath = flagCfg.ConfigPath
@@ -91,6 +97,10 @@ func ValidateServerConfig(cfg ServerConfig, flagCfg ServerFlagConfig, log *zap.S
 
 		if cfg.UseCrypto == "" {
 			cfg.UseCrypto = flagCfg.UseCrypto
+		}
+
+		if cfg.TrustedSubnet == "" {
+			cfg.TrustedSubnet = flagCfg.TrustedSubnet
 		}
 	}
 

@@ -10,6 +10,7 @@ import (
 	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/middlewares/decrypt"
 	"go-metric-svc/internal/middlewares/gzipper"
+	"go-metric-svc/internal/middlewares/ip_checker"
 	customLog "go-metric-svc/internal/middlewares/logger"
 	"go-metric-svc/internal/models"
 	"go-metric-svc/internal/service/server"
@@ -69,12 +70,19 @@ func main() {
 	r.Use(customLog.LogMiddleware(log))
 	r.Use(gzipper.GzipMiddleware(log))
 	if serverConf.UseCrypto != "" {
+		log.Infof("Enable crypto middleware")
 		key, err := utils.LoadPrivateKey(serverConf.UseCrypto)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
 
 		r.Use(decrypt.DecryptMiddleware(key))
+	}
+
+	if serverConf.TrustedSubnet != "" {
+		log.Infof("Enable trusted subnet middleware")
+		fmt.Println(serverConf.TrustedSubnet)
+		r.Use(ip_checker.AddrCheckMiddleware(serverConf.TrustedSubnet, log))
 	}
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
