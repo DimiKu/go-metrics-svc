@@ -149,6 +149,10 @@ func main() {
 						return
 					}
 					sugarLog.Infof("Start send metric")
+					if err := agentService.SendMetricViaGrpc(metric.Name, metric.Value, "127.0.0.1:55021"); err != nil {
+						fmt.Println("Error sending metric via grpc:", err)
+					}
+
 					if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, cfg.Addr, cfg.UseHash, cfg.UseCrypto); err != nil {
 						fmt.Println("Error sending metric:", err)
 					}

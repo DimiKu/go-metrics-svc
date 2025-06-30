@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = 'internal/proto';
+
+package metrics;
+
+service MetricsService {
+  rpc UpdateMetric (MetricRequest) returns (MetricResponse);
+}
+
+message MetricRequest {
+  string id = 1;
+  string type = 2;  // "gauge" или "counter"
+  oneof value {
+    int64 delta = 3;  // для counter
+    double val = 4;   // для gauge
+  }
+}
+
+message MetricResponse {
+  bool success = 1;
+  string error = 2;
+}
