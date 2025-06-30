@@ -32,6 +32,7 @@ type AgentConfig struct {
 	ConfigPath     string `env:"CONFIG"`
 }
 
+// TODO у агента и сервера разные конфиги. Надо ли писать какой-то рефлект?
 func ValidateAgentConfig(
 	cfg AgentConfig,
 	flagCfg AgentFlagConfig,
