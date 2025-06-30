@@ -215,6 +215,7 @@ func MetricJSONCollectHandler(service Service, log *zap.SugaredLogger, ctx conte
 
 		lowerCaseType := strings.ToLower(metric.MType)
 		rw.Header().Set("Content-Type", "application/json")
+		log.Infof("Got metric %s", metric.ID)
 		switch lowerCaseType {
 		case dto.MetricTypeHandlerCounterTypeDto:
 			if metric.Delta == nil {
