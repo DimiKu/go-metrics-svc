@@ -86,7 +86,7 @@ func main() {
 	if serverConf.TrustedSubnet != "" {
 		log.Infof("Enable trusted subnet middleware")
 		fmt.Println(serverConf.TrustedSubnet)
-		r.Use(ip_checker.AddrCheckMiddleware(serverConf.TrustedSubnet, log))
+		r.Use(ipchecker.AddrCheckMiddleware(serverConf.TrustedSubnet, log))
 	}
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))

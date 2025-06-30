@@ -1,4 +1,4 @@
-package ip_checker
+package ipchecker
 
 import (
 	"go.uber.org/zap"
