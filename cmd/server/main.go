@@ -10,8 +10,11 @@ import (
 	"go-metric-svc/internal/handlers"
 	"go-metric-svc/internal/middlewares/decrypt"
 	"go-metric-svc/internal/middlewares/gzipper"
+	"go-metric-svc/internal/middlewares/ip_checker"
 	customLog "go-metric-svc/internal/middlewares/logger"
 	"go-metric-svc/internal/models"
+
+	g "go-metric-svc/internal/grpcserver"
 	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
 	"go-metric-svc/internal/utils"
@@ -69,12 +72,19 @@ func main() {
 	r.Use(customLog.LogMiddleware(log))
 	r.Use(gzipper.GzipMiddleware(log))
 	if serverConf.UseCrypto != "" {
+		log.Infof("Enable crypto middleware")
 		key, err := utils.LoadPrivateKey(serverConf.UseCrypto)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
 
 		r.Use(decrypt.DecryptMiddleware(key))
+	}
+
+	if serverConf.TrustedSubnet != "" {
+		log.Infof("Enable trusted subnet middleware")
+		fmt.Println(serverConf.TrustedSubnet)
+		r.Use(ipchecker.AddrCheckMiddleware(serverConf.TrustedSubnet, log))
 	}
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.MetricCollectHandler(collectorService, log, ctx))
@@ -90,6 +100,8 @@ func main() {
 		Addr:    ":8080",
 		Handler: r,
 	}
+
+	grpcServer := g.NewGRPCServer(collectorService, cfg, log)
 
 	if initialStorage != nil {
 		go func() {
@@ -120,6 +132,9 @@ func main() {
 			if err := srv.Shutdown(ctx); err != nil {
 				log.Infof("Failed in gracefull shutdown")
 			}
+			if err := grpcServer.Shutdown(); err != nil {
+				log.Infof("Failed in gracefull shutdown grpc server")
+			}
 			close(idleConnsClosed)
 		}()
 	} else {
@@ -135,14 +150,26 @@ func main() {
 				log.Infof("Failed in gracefull shutdown")
 			}
 
+			if err := grpcServer.Shutdown(); err != nil {
+				log.Infof("Failed in gracefull shutdown grpc server")
+			}
+
 			close(idleConnsClosed)
 		}()
 	}
 
+	go func() {
+		if err := grpcServer.StartGRPCServer(); err != nil {
+			log.Errorf("Failed to start GRPC server: %s", err)
+		}
+	}()
+
 	log.Infof("Server start on %s", serverConf.Addr)
-	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Errorf("Failed to start server: %s", err)
-	}
+	go func() {
+		if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Errorf("Failed to start server: %s", err)
+		}
+	}()
 
 	<-idleConnsClosed
 	fmt.Println("Server Shutdown gracefully")

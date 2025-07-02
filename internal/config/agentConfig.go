@@ -20,6 +20,7 @@ type AgentFlagConfig struct {
 	WorkerCount  int
 	UseCrypto    string
 	ConfigPath   string
+	GRPCAddr     string
 }
 
 type AgentConfig struct {
@@ -30,6 +31,7 @@ type AgentConfig struct {
 	WorkerCount    int    `env:"RATE_LIMIT"`
 	UseCrypto      string `env:"CRYPTO_KEY"`
 	ConfigPath     string `env:"CONFIG"`
+	GRPCAddr       string `env:"GRPC_ADDR"`
 }
 
 // TODO у агента и сервера разные конфиги. Надо ли писать какой-то рефлект?

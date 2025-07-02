@@ -15,6 +15,7 @@ func parseFlags() {
 	flag.IntVar(&flags.WorkerCount, "l", 5, "rate limit")
 	flag.StringVar(&flags.UseCrypto, "crypto-key", "", "use crypto")
 	flag.StringVar(&flags.ConfigPath, "c", "", "use config")
+	flag.StringVar(&flags.GRPCAddr, "gaddr", "127.0.0.1:55051", "address and port of grpc to listen on")
 
 	flag.Parse()
 }

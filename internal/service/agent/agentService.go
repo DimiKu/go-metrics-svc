@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,8 +13,11 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"go-metric-svc/internal/entities/agent"
 	"go-metric-svc/internal/models"
+	"go-metric-svc/internal/proto"
 	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -176,12 +180,61 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Content-Type", "application/json")
+	ipAddr, err := utils.GetMyIP()
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-Real-IP", ipAddr)
+	log.Infof("Sending metric with real-ip %s", ipAddr)
 	req.ContentLength = int64(b.Len())
 
-	log.Infof("Do req: %s", req.Body)
+	log.Infof("Do req: %s", resMetrics)
 	err = doReqWithRetry(*req, *log)
 	if err != nil {
 		log.Errorf("Error in send metrics: %s", err)
+	}
+
+	return nil
+}
+
+func SendMetricViaGrpc(metricType string, metricValue float32, host string) error {
+	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := proto.NewMetricsServiceClient(conn)
+	if err := sendGRPCMetric(client, metricType, metricValue); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func sendGRPCMetric(client proto.MetricsServiceClient, metricID string, metricValue float32) error {
+	req := &proto.MetricRequest{
+		Id: metricID,
+	}
+	if metricID == agent.CounterMetricName {
+		req.Type = agent.CounterMetricName
+		req.Value = &proto.MetricRequest_Delta{Delta: int64(metricValue)}
+	} else {
+		req.Id = metricID
+		req.Type = agent.GaugeMetricName
+		req.Value = &proto.MetricRequest_Val{Val: float64(metricValue)}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.UpdateMetric(ctx, req)
+	if err != nil {
+		return fmt.Errorf("could not update metric: %v", err)
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("server returned error: %s", resp.Error)
 	}
 
 	return nil

@@ -74,7 +74,7 @@ func main() {
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Println("Shutting down pool goroutines")
+				sugarLog.Info("Shutting down pool goroutines")
 				return
 			default:
 				<-poolTicker.C
@@ -92,7 +92,7 @@ func main() {
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Println("Shutting down extra worker goroutines")
+				sugarLog.Info("Shutting down extra worker goroutines")
 				return
 			default:
 				<-poolTicker.C
@@ -113,7 +113,7 @@ func main() {
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Println("Shutting down collect metric in channel goroutines")
+				sugarLog.Infof("Shutting down collect metric in channel goroutines")
 				return
 			default:
 				<-sendTicker.C
@@ -149,8 +149,12 @@ func main() {
 						return
 					}
 					sugarLog.Infof("Start send metric")
+					if err := agentService.SendMetricViaGrpc(metric.Name, metric.Value, cfg.GRPCAddr); err != nil {
+						sugarLog.Infof("Error sending metric via grpc: %s", err)
+					}
+
 					if err := agentService.SendJSONMetric(metric.Name, metric.Value, sugarLog, cfg.Addr, cfg.UseHash, cfg.UseCrypto); err != nil {
-						fmt.Println("Error sending metric:", err)
+						sugarLog.Infof("Error sending metric: %s", err)
 					}
 				}
 			}
@@ -158,16 +162,16 @@ func main() {
 	}()
 
 	<-signalChan
-	fmt.Println("Agent start graceful Shutdown")
+	sugarLog.Info("Agent start graceful Shutdown")
 	cancel()
 
 	// TODO тут должен быть wg.Wait() но не получается. что-то блокируется. Надо обсудить
-	fmt.Println("Agent Shutdown gracefully")
+	sugarLog.Info("Agent Shutdown gracefully")
 
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Shutting down send goroutines")
+			sugarLog.Infof("Shutting down send goroutines")
 			return
 		default:
 			sugarLog.Info("Agent tick")
