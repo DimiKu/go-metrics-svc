@@ -1,4 +1,4 @@
-package grpcServer
+package grpcserver
 
 import (
 	"go-metric-svc/internal/config"

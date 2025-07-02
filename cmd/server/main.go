@@ -14,7 +14,7 @@ import (
 	customLog "go-metric-svc/internal/middlewares/logger"
 	"go-metric-svc/internal/models"
 
-	g "go-metric-svc/internal/grpcServer"
+	g "go-metric-svc/internal/grpcserver"
 	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
 	"go-metric-svc/internal/utils"
