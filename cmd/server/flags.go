@@ -17,6 +17,7 @@ func parseFlagsToStruct() {
 	flag.StringVar(&flags.UseCrypto, "crypto-key", "", "use ssl key")
 	flag.StringVar(&flags.ConfigPath, "c", "", "use config")
 	flag.StringVar(&flags.TrustedSubnet, "t", "", "trusted subnet")
+	flag.StringVar(&flags.GRPCAddr, "gaddr", "localhost:55051", "address and port of grpc to listen on")
 
 	flag.Parse()
 }

@@ -18,7 +18,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -201,7 +200,7 @@ func SendJSONMetric(metricType string, metricValue float32, log *zap.SugaredLogg
 func SendMetricViaGrpc(metricType string, metricValue float32, host string) error {
 	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer conn.Close()
 

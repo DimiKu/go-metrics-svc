@@ -13,14 +13,12 @@ import (
 	"go-metric-svc/internal/middlewares/ip_checker"
 	customLog "go-metric-svc/internal/middlewares/logger"
 	"go-metric-svc/internal/models"
-	"go-metric-svc/internal/orchestrator"
-	"go-metric-svc/internal/proto"
+
+	g "go-metric-svc/internal/grpcServer"
 	"go-metric-svc/internal/service/server"
 	"go-metric-svc/internal/storage"
 	"go-metric-svc/internal/utils"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -103,6 +101,8 @@ func main() {
 		Handler: r,
 	}
 
+	grpcServer := g.NewGRPCServer(collectorService, cfg, log)
+
 	if initialStorage != nil {
 		go func() {
 			for {
@@ -132,6 +132,9 @@ func main() {
 			if err := srv.Shutdown(ctx); err != nil {
 				log.Infof("Failed in gracefull shutdown")
 			}
+			if err := grpcServer.Shutdown(); err != nil {
+				log.Infof("Failed in gracefull shutdown grpc server")
+			}
 			close(idleConnsClosed)
 		}()
 	} else {
@@ -147,12 +150,16 @@ func main() {
 				log.Infof("Failed in gracefull shutdown")
 			}
 
+			if err := grpcServer.Shutdown(); err != nil {
+				log.Infof("Failed in gracefull shutdown grpc server")
+			}
+
 			close(idleConnsClosed)
 		}()
 	}
 
 	go func() {
-		if err := startGRPCServer(collectorService, log); err != nil {
+		if err := grpcServer.StartGRPCServer(); err != nil {
 			log.Errorf("Failed to start GRPC server: %s", err)
 		}
 	}()
@@ -221,26 +228,4 @@ func configureCollectorServiceAndStorage(
 
 		return collectorService, initialStorage, nil, nil
 	}
-}
-
-func startGRPCServer(
-	collectorService *server.MetricCollectorSvc,
-	log *zap.SugaredLogger,
-) error {
-	lis, err := net.Listen("tcp", ":55021")
-	if err != nil {
-		log.Fatalf("gRPC server failed to listen: %v", err)
-	}
-
-	grpcServer := grpc.NewServer()
-
-	grpcOrch := orchestrator.NewOrchestrator(collectorService, log)
-	proto.RegisterMetricsServiceServer(grpcServer, grpcOrch)
-
-	log.Info("gRPC server listening on :50051")
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("gRPC server failed: %v", err)
-	}
-
-	return nil
 }

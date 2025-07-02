@@ -24,6 +24,7 @@ type ServerFlagConfig struct {
 	UseCrypto       string
 	ConfigPath      string
 	TrustedSubnet   string
+	GRPCAddr        string
 }
 
 type ServerConfig struct {
@@ -36,6 +37,7 @@ type ServerConfig struct {
 	UseCrypto       string `env:"CRYPTO_KEY"`
 	ConfigPath      string `env:"CONFIG"`
 	TrustedSubnet   string `env:"TRUSTED_SUBNET"`
+	GRPCAddr        string `env:"GRPC_ADDR"`
 }
 
 func ValidateServerConfig(cfg ServerConfig, flagCfg ServerFlagConfig, log *zap.SugaredLogger) (ServerConfig, error) {
@@ -70,6 +72,10 @@ func ValidateServerConfig(cfg ServerConfig, flagCfg ServerFlagConfig, log *zap.S
 
 	if cfg.TrustedSubnet == "" {
 		cfg.TrustedSubnet = flagCfg.TrustedSubnet
+	}
+
+	if cfg.GRPCAddr == "" {
+		cfg.GRPCAddr = flagCfg.GRPCAddr
 	}
 
 	if cfg.ConfigPath != "" || flagCfg.ConfigPath != "" {
